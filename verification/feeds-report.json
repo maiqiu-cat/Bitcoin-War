@@ -1,0 +1,273 @@
+{
+ "at": "2026-10-01T08:28:18.853Z",
+ "seconds": 90,
+ "rows": [
+  {
+   "venue": "coinbase",
+   "sockets": "trades:1x book:1x",
+   "msgs": 2163,
+   "trades": 228,
+   "bookLv": "4241/1953",
+   "spreadUsd": 0.01,
+   "priceUsd": 83400.34,
+   "vsIndexBps": 0.2,
+   "weight": "27.7%"
+  },
+  {
+   "venue": "kraken",
+   "sockets": "spot:1x",
+   "msgs": 11642,
+   "trades": 132,
+   "bookLv": "500/500",
+   "spreadUsd": 0.1,
+   "priceUsd": 83399.1,
+   "vsIndexBps": 0.1,
+   "weight": "11.3%"
+  },
+  {
+   "venue": "okx",
+   "sockets": "spot+liq:1x",
+   "msgs": 1578,
+   "trades": 170,
+   "bookLv": "400/400",
+   "spreadUsd": 0.1,
+   "priceUsd": 83403.6,
+   "vsIndexBps": 0.6,
+   "weight": "32.9%"
+  },
+  {
+   "venue": "bybit",
+   "sockets": "spot:1x liq:1x",
+   "msgs": 1563,
+   "trades": 1258,
+   "bookLv": "200/200",
+   "spreadUsd": 0.1,
+   "priceUsd": 83390.21,
+   "vsIndexBps": -1,
+   "weight": "26.4%"
+  },
+  {
+   "venue": "bitstamp",
+   "sockets": "spot:1x",
+   "msgs": 892,
+   "trades": 18,
+   "bookLv": "100/100",
+   "spreadUsd": 0.01,
+   "priceUsd": 83392.71,
+   "vsIndexBps": -0.7,
+   "weight": "1.7%"
+  },
+  {
+   "venue": "binance",
+   "sockets": "spot:0x[7 drop] liq:1x",
+   "msgs": 0,
+   "trades": 0,
+   "bookLv": "-",
+   "spreadUsd": "-",
+   "priceUsd": "-",
+   "vsIndexBps": "-",
+   "weight": "-"
+  },
+  {
+   "venue": "deribit",
+   "sockets": "options:1x",
+   "msgs": 14,
+   "trades": 0,
+   "bookLv": "-",
+   "spreadUsd": "-",
+   "priceUsd": "-",
+   "vsIndexBps": "-",
+   "weight": "-"
+  }
+ ],
+ "index": {
+  "price": 83398.46861367818,
+  "open24h": 83095.1014150028,
+  "venues": [
+   {
+    "ex": "coinbase",
+    "priceUsd": 83400.34,
+    "weight": 611460014.1812974,
+    "included": true
+   },
+   {
+    "ex": "kraken",
+    "priceUsd": 83399.1,
+    "weight": 248849552.41863546,
+    "included": true
+   },
+   {
+    "ex": "okx",
+    "priceUsd": 83403.59784,
+    "weight": 727341158.5607959,
+    "included": true
+   },
+   {
+    "ex": "bybit",
+    "priceUsd": 83390.205612,
+    "weight": 583384414.4141725,
+    "included": true
+   },
+   {
+    "ex": "bitstamp",
+    "priceUsd": 83392.71,
+    "weight": 36743067.405607305,
+    "included": true
+   }
+  ]
+ },
+ "liq": {
+  "bid": 52929810.97689703,
+  "ask": 34095377.264399685
+ },
+ "flow": {
+  "buy": 930951.7108675968,
+  "sell": 1224089.5333586333
+ },
+ "events": [
+  {
+   "kind": "trade",
+   "ex": "bybit",
+   "bull": true,
+   "usd": 133841.6052761198,
+   "price": 83390.72001273514,
+   "ts": 1790843213198,
+   "label": "Large buy trade",
+   "id": 1
+  },
+  {
+   "kind": "trade",
+   "ex": "okx",
+   "bull": true,
+   "usd": 83449.69910082234,
+   "price": 83403.36519532173,
+   "ts": 1790843215482,
+   "label": "Large buy trade",
+   "id": 2
+  },
+  {
+   "kind": "trade",
+   "ex": "bybit",
+   "bull": true,
+   "usd": 88582.91058014272,
+   "price": 83392.6362900842,
+   "ts": 1790843215586,
+   "label": "Large buy trade",
+   "id": 3
+  },
+  {
+   "kind": "trade",
+   "ex": "okx",
+   "bull": false,
+   "usd": 417910.625753402,
+   "price": 83412.92853136295,
+   "ts": 1790843215997,
+   "label": "Large sell trade",
+   "id": 4
+  },
+  {
+   "kind": "trade",
+   "ex": "okx",
+   "bull": false,
+   "usd": 417963.846905555,
+   "price": 83423.551048,
+   "ts": 1790843221966,
+   "label": "Large sell trade",
+   "id": 5
+  },
+  {
+   "kind": "trade",
+   "ex": "bybit",
+   "bull": true,
+   "usd": 51486.94764190422,
+   "price": 83409.65924899997,
+   "ts": 1790843241074,
+   "label": "Large buy trade",
+   "id": 6
+  },
+  {
+   "kind": "option",
+   "ex": "deribit",
+   "bull": true,
+   "usd": 160123.296,
+   "price": 83397.55,
+   "ts": 1790843275472,
+   "label": "Large option buy",
+   "detail": "BTC-27NOV26-94000-C",
+   "id": 7
+  },
+  {
+   "kind": "trade",
+   "ex": "okx",
+   "bull": true,
+   "usd": 59555.29590369869,
+   "price": 83398.865621,
+   "ts": 1790843282352,
+   "label": "Large buy trade",
+   "id": 8
+  },
+  {
+   "kind": "trade",
+   "ex": "okx",
+   "bull": true,
+   "usd": 83421.21595752165,
+   "price": 83383.70996477953,
+   "ts": 1790843285878,
+   "label": "Large buy trade",
+   "id": 9
+  },
+  {
+   "kind": "trade",
+   "ex": "okx",
+   "bull": true,
+   "usd": 83429.84412885008,
+   "price": 83387.80916812654,
+   "ts": 1790843287446,
+   "label": "Large buy trade",
+   "id": 10
+  },
+  {
+   "kind": "trade",
+   "ex": "bybit",
+   "bull": true,
+   "usd": 85211.84076495757,
+   "price": 83377.77974393032,
+   "ts": 1790843287478,
+   "label": "Large buy trade",
+   "id": 11
+  }
+ ],
+ "checks": [
+  [
+   ">= 3 spot venues in index",
+   true,
+   "5: coinbase, kraken, okx, bybit, bitstamp"
+  ],
+  [
+   "every included venue within 30 bps of index",
+   true,
+   ""
+  ],
+  [
+   "USDT/USD rate received",
+   true,
+   "0.99942"
+  ],
+  [
+   ">= 3 books populated",
+   true,
+   ""
+  ],
+  [
+   "no crossed books observed",
+   true,
+   ""
+  ],
+  [
+   "aggregated depth ±1% > $5M per side",
+   true,
+   ""
+  ]
+ ],
+ "crossed": []
+}

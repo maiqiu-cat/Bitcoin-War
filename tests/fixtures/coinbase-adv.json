@@ -1,0 +1,414 @@
+{
+ "l2_data:snapshot": [
+  {
+   "channel": "l2_data",
+   "timestamp": "2026-10-01T07:56:00.193663929Z",
+   "sequence_num": 0,
+   "events": [
+    {
+     "type": "snapshot",
+     "product_id": "BTC-USD",
+     "updates": [
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83532.24",
+       "new_quantity": "0.29892829"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83530.99",
+       "new_quantity": "0.14824955"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83530.98",
+       "new_quantity": "0.174014"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83530.56",
+       "new_quantity": "0.02394334"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83530.15",
+       "new_quantity": "0.00376404"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83529.9",
+       "new_quantity": "0.04660282"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83529.21",
+       "new_quantity": "0.37280024"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83529.2",
+       "new_quantity": "0.09577488"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83528.29",
+       "new_quantity": "0.28760859"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83526.56",
+       "new_quantity": "0.00077814"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83525.65",
+       "new_quantity": "0.28760859"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.268008Z",
+       "price_level": "83525.5",
+       "new_quantity": "0.00024981"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "l2_data:update": [
+  {
+   "channel": "l2_data",
+   "timestamp": "2026-10-01T07:56:00.221014478Z",
+   "sequence_num": 1,
+   "events": [
+    {
+     "type": "update",
+     "product_id": "BTC-USD",
+     "updates": [
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83532.24",
+       "new_quantity": "0.39547783"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83531.01",
+       "new_quantity": "0.13395537"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83531",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83530.99",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83530.65",
+       "new_quantity": "0.00667319"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83530.56",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83529.21",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83529.2",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83528.29",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83526.56",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83525.65",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.358258Z",
+       "price_level": "83525.55",
+       "new_quantity": "0.17185146"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "channel": "l2_data",
+   "timestamp": "2026-10-01T07:56:00.221296856Z",
+   "sequence_num": 2,
+   "events": [
+    {
+     "type": "update",
+     "product_id": "BTC-USD",
+     "updates": [
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83532.24",
+       "new_quantity": "0.40547783"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83531.03",
+       "new_quantity": "0.3056577"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83531.02",
+       "new_quantity": "0.28760859"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83531.01",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83530.65",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83529.73",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83529.22",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83528.48",
+       "new_quantity": "0.00667319"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83528.19",
+       "new_quantity": "0.34355379"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83528.18",
+       "new_quantity": "0.28760859"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83525.67",
+       "new_quantity": "0.00616172"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.487552Z",
+       "price_level": "83525.66",
+       "new_quantity": "0.2798529"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "channel": "l2_data",
+   "timestamp": "2026-10-01T07:56:00.225434598Z",
+   "sequence_num": 5,
+   "events": [
+    {
+     "type": "update",
+     "product_id": "BTC-USD",
+     "updates": [
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83529.26",
+       "new_quantity": "0.00667319"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83528.52",
+       "new_quantity": "0.02718285"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83528.48",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83520.57",
+       "new_quantity": "0.77164266"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83517.35",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83517",
+       "new_quantity": "0.7"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83515.47",
+       "new_quantity": "0.06"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83512.01",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83512",
+       "new_quantity": "0"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83510.74",
+       "new_quantity": "0.11976313"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83510.45",
+       "new_quantity": "0.00583"
+      },
+      {
+       "side": "bid",
+       "event_time": "2026-10-01T07:55:59.74525Z",
+       "price_level": "83510.24",
+       "new_quantity": "0"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "subscriptions:": [
+  {
+   "channel": "subscriptions",
+   "timestamp": "2026-10-01T07:56:00.225119102Z",
+   "sequence_num": 3,
+   "events": [
+    {
+     "subscriptions": {
+      "level2": [
+       "BTC-USD"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "channel": "subscriptions",
+   "timestamp": "2026-10-01T07:56:00.225171406Z",
+   "sequence_num": 4,
+   "events": [
+    {
+     "subscriptions": {
+      "heartbeats": [
+       "heartbeats"
+      ],
+      "level2": [
+       "BTC-USD"
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "heartbeats:": [
+  {
+   "channel": "heartbeats",
+   "timestamp": "2026-10-01T07:56:00.422318875Z",
+   "sequence_num": 15,
+   "events": [
+    {
+     "current_time": "2026-10-01 07:56:00.420329751 +0000 UTC m=+534308.232148689",
+     "heartbeat_counter": 534308
+    }
+   ]
+  },
+  {
+   "channel": "heartbeats",
+   "timestamp": "2026-10-01T07:56:01.421072572Z",
+   "sequence_num": 31,
+   "events": [
+    {
+     "current_time": "2026-10-01 07:56:01.420411674 +0000 UTC m=+534309.232230614",
+     "heartbeat_counter": 534309
+    }
+   ]
+  },
+  {
+   "channel": "heartbeats",
+   "timestamp": "2026-10-01T07:56:02.42240263Z",
+   "sequence_num": 39,
+   "events": [
+    {
+     "current_time": "2026-10-01 07:56:02.420349028 +0000 UTC m=+534310.232167967",
+     "heartbeat_counter": 534310
+    }
+   ]
+  }
+ ]
+}

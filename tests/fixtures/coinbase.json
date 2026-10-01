@@ -1,0 +1,134 @@
+{
+ "type:subscriptions": [
+  {
+   "type": "subscriptions",
+   "channels": [
+    {
+     "name": "matches",
+     "product_ids": [
+      "BTC-USD"
+     ],
+     "account_ids": null
+    },
+    {
+     "name": "ticker",
+     "product_ids": [
+      "BTC-USD"
+     ],
+     "account_ids": null
+    }
+   ]
+  }
+ ],
+ "type:last_match": [
+  {
+   "type": "last_match",
+   "trade_id": 1100840995,
+   "maker_order_id": "ea82dfa1-74da-4b74-8759-06a4364040d7",
+   "taker_order_id": "2d551cbb-1bf6-49a8-ac66-ba37db75366c",
+   "side": "sell",
+   "size": "0.01320767",
+   "price": "83532.25",
+   "product_id": "BTC-USD",
+   "sequence": 137077291831,
+   "time": "2026-10-01T07:55:59.260615Z"
+  }
+ ],
+ "type:ticker": [
+  {
+   "type": "ticker",
+   "sequence": 137077291831,
+   "product_id": "BTC-USD",
+   "price": "83532.25",
+   "open_24h": "83259.84",
+   "volume_24h": "7426.96735500",
+   "low_24h": "82974.25",
+   "high_24h": "85613.72",
+   "volume_30d": "176304.27773697",
+   "best_bid": "83532.24",
+   "best_bid_size": "0.25054708",
+   "best_ask": "83532.25",
+   "best_ask_size": "0.13067194",
+   "side": "buy",
+   "time": "2026-10-01T07:55:59.260615Z",
+   "trade_id": 1100840995,
+   "last_size": "0.01320767"
+  },
+  {
+   "type": "ticker",
+   "sequence": 137077292600,
+   "product_id": "BTC-USD",
+   "price": "83532.25",
+   "open_24h": "83259.84",
+   "volume_24h": "7426.97034839",
+   "low_24h": "82974.25",
+   "high_24h": "85613.72",
+   "volume_30d": "176304.28073036",
+   "best_bid": "83532.24",
+   "best_bid_size": "0.40547783",
+   "best_ask": "83532.25",
+   "best_ask_size": "0.00310914",
+   "side": "buy",
+   "time": "2026-10-01T07:55:59.760933Z",
+   "trade_id": 1100840996,
+   "last_size": "0.00299339"
+  },
+  {
+   "type": "ticker",
+   "sequence": 137077292602,
+   "product_id": "BTC-USD",
+   "price": "83532.25",
+   "open_24h": "83259.84",
+   "volume_24h": "7426.97334178",
+   "low_24h": "82974.25",
+   "high_24h": "85613.72",
+   "volume_30d": "176304.28372375",
+   "best_bid": "83532.24",
+   "best_bid_size": "0.40547783",
+   "best_ask": "83532.25",
+   "best_ask_size": "0.00011575",
+   "side": "buy",
+   "time": "2026-10-01T07:55:59.760933Z",
+   "trade_id": 1100840997,
+   "last_size": "0.00299339"
+  }
+ ],
+ "type:match": [
+  {
+   "type": "match",
+   "trade_id": 1100840996,
+   "maker_order_id": "5ab560e8-6292-4d90-a1c4-a1dec789eda6",
+   "taker_order_id": "879deed6-38cf-4721-a3d0-abbbaeb4dbba",
+   "side": "sell",
+   "size": "0.00299339",
+   "price": "83532.25",
+   "product_id": "BTC-USD",
+   "sequence": 137077292600,
+   "time": "2026-10-01T07:55:59.760933Z"
+  },
+  {
+   "type": "match",
+   "trade_id": 1100840997,
+   "maker_order_id": "01928be8-1096-43a7-a4ec-c34c280f285d",
+   "taker_order_id": "879deed6-38cf-4721-a3d0-abbbaeb4dbba",
+   "side": "sell",
+   "size": "0.00299339",
+   "price": "83532.25",
+   "product_id": "BTC-USD",
+   "sequence": 137077292602,
+   "time": "2026-10-01T07:55:59.760933Z"
+  },
+  {
+   "type": "match",
+   "trade_id": 1100840998,
+   "maker_order_id": "2f4acb86-fd7a-44c8-86dd-885a8254f8c8",
+   "taker_order_id": "879deed6-38cf-4721-a3d0-abbbaeb4dbba",
+   "side": "sell",
+   "size": "0.00011575",
+   "price": "83532.25",
+   "product_id": "BTC-USD",
+   "sequence": 137077292604,
+   "time": "2026-10-01T07:55:59.760933Z"
+  }
+ ]
+}

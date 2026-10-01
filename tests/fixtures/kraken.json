@@ -1,0 +1,412 @@
+{
+ "status:update": [
+  {
+   "channel": "status",
+   "type": "update",
+   "data": [
+    {
+     "version": "2.0.10",
+     "system": "online",
+     "api_version": "v2",
+     "connection_id": 11278137170445206000,
+     "upcoming_maintenance": [],
+     "emergency": []
+    }
+   ]
+  }
+ ],
+ "method:subscribe:": [
+  {
+   "method": "subscribe",
+   "result": {
+    "channel": "book",
+    "depth": 100,
+    "snapshot": true,
+    "symbol": "BTC/USD"
+   },
+   "success": true,
+   "time_in": "2026-10-01T07:56:00.722825Z",
+   "time_out": "2026-10-01T07:56:00.722876Z"
+  },
+  {
+   "method": "subscribe",
+   "result": {
+    "channel": "trade",
+    "snapshot": false,
+    "symbol": "BTC/USD"
+   },
+   "success": true,
+   "time_in": "2026-10-01T07:56:00.722928Z",
+   "time_out": "2026-10-01T07:56:00.722945Z"
+  },
+  {
+   "method": "subscribe",
+   "result": {
+    "channel": "ticker",
+    "event_trigger": "trades",
+    "snapshot": true,
+    "symbol": "BTC/USD"
+   },
+   "success": true,
+   "time_in": "2026-10-01T07:56:00.722963Z",
+   "time_out": "2026-10-01T07:56:00.722988Z"
+  }
+ ],
+ "ticker:snapshot": [
+  {
+   "channel": "ticker",
+   "type": "snapshot",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bid": 83519.9,
+     "bid_qty": 4.48274254,
+     "ask": 83520,
+     "ask_qty": 4.88092169,
+     "last": 83520,
+     "volume": 2932.4435661,
+     "vwap": 84074.8,
+     "low": 82981.3,
+     "high": 85604,
+     "change": 171.8,
+     "change_pct": 0.21,
+     "trades": 148101,
+     "timestamp": "2026-10-01T07:56:00.713031Z"
+    }
+   ]
+  },
+  {
+   "channel": "ticker",
+   "type": "snapshot",
+   "data": [
+    {
+     "symbol": "USDT/USD",
+     "bid": 0.99946,
+     "bid_qty": 5625.55076118,
+     "ask": 0.99947,
+     "ask_qty": 22531.45621546,
+     "last": 0.99947,
+     "volume": 228246727.37687394,
+     "vwap": 0.99945,
+     "low": 0.999,
+     "high": 0.99967,
+     "change": -0.00006,
+     "change_pct": -0.01,
+     "trades": 32822,
+     "timestamp": "2026-10-01T07:55:54.290356Z"
+    }
+   ]
+  }
+ ],
+ "book:snapshot": [
+  {
+   "channel": "book",
+   "type": "snapshot",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bids": [
+      {
+       "price": 83519.9,
+       "qty": 4.48274254
+      },
+      {
+       "price": 83519.5,
+       "qty": 0.19747281
+      },
+      {
+       "price": 83519.4,
+       "qty": 0.1275276
+      },
+      {
+       "price": 83518.9,
+       "qty": 0.72195666
+      },
+      {
+       "price": 83518.8,
+       "qty": 2.41861528
+      },
+      {
+       "price": 83518.3,
+       "qty": 0.02477601
+      },
+      {
+       "price": 83517.6,
+       "qty": 0.80462281
+      },
+      {
+       "price": 83516.1,
+       "qty": 0.0002
+      },
+      {
+       "price": 83515.9,
+       "qty": 1.71961306
+      },
+      {
+       "price": 83515.8,
+       "qty": 2.41718365
+      },
+      {
+       "price": 83514.2,
+       "qty": 0.3480475
+      },
+      {
+       "price": 83514,
+       "qty": 0.00336929
+      }
+     ],
+     "asks": [
+      {
+       "price": 83520,
+       "qty": 4.88092169
+      },
+      {
+       "price": 83520.1,
+       "qty": 0.0003
+      },
+      {
+       "price": 83520.9,
+       "qty": 0.00598744
+      },
+      {
+       "price": 83521.6,
+       "qty": 0.000051
+      },
+      {
+       "price": 83522,
+       "qty": 0.0003
+      },
+      {
+       "price": 83525,
+       "qty": 0.0004
+      },
+      {
+       "price": 83525.1,
+       "qty": 0.0004
+      },
+      {
+       "price": 83525.2,
+       "qty": 0.00011236
+      },
+      {
+       "price": 83525.7,
+       "qty": 0.000051
+      },
+      {
+       "price": 83527,
+       "qty": 0.0003
+      },
+      {
+       "price": 83529.9,
+       "qty": 0.000051
+      },
+      {
+       "price": 83530.1,
+       "qty": 0.0004
+      }
+     ],
+     "checksum": 1959456839,
+     "timestamp": "2026-10-01T07:56:00.714919Z"
+    }
+   ]
+  }
+ ],
+ "book:update": [
+  {
+   "channel": "book",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bids": [],
+     "asks": [
+      {
+       "price": 83553.1,
+       "qty": 0
+      },
+      {
+       "price": 83600.4,
+       "qty": 2.41386841
+      },
+      {
+       "price": 83538.1,
+       "qty": 0.01974728
+      }
+     ],
+     "checksum": 1959456839,
+     "timestamp": "2026-10-01T07:56:00.798981Z"
+    }
+   ]
+  },
+  {
+   "channel": "book",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bids": [],
+     "asks": [
+      {
+       "price": 83598.6,
+       "qty": 0
+      },
+      {
+       "price": 83600.4,
+       "qty": 2.41386841
+      },
+      {
+       "price": 83599.2,
+       "qty": 0.19299309
+      }
+     ],
+     "checksum": 1959456839,
+     "timestamp": "2026-10-01T07:56:00.818370Z"
+    }
+   ]
+  },
+  {
+   "channel": "book",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bids": [],
+     "asks": [
+      {
+       "price": 83520,
+       "qty": 4.48674622
+      }
+     ],
+     "checksum": 444835215,
+     "timestamp": "2026-10-01T07:56:00.844551Z"
+    }
+   ]
+  }
+ ],
+ "trade:update": [
+  {
+   "channel": "trade",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "side": "buy",
+     "price": 83520,
+     "qty": 0.39417547,
+     "ord_type": "limit",
+     "trade_id": 109759502,
+     "timestamp": "2026-10-01T07:56:00.844551Z"
+    }
+   ]
+  },
+  {
+   "channel": "trade",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "side": "buy",
+     "price": 83520,
+     "qty": 0.00299472,
+     "ord_type": "limit",
+     "trade_id": 109759503,
+     "timestamp": "2026-10-01T07:56:00.943053Z"
+    }
+   ]
+  },
+  {
+   "channel": "trade",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "side": "buy",
+     "price": 83520,
+     "qty": 0.34569676,
+     "ord_type": "limit",
+     "trade_id": 109759504,
+     "timestamp": "2026-10-01T07:56:00.960099Z"
+    }
+   ]
+  }
+ ],
+ "ticker:update": [
+  {
+   "channel": "ticker",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bid": 83519.9,
+     "bid_qty": 4.48274254,
+     "ask": 83520,
+     "ask_qty": 4.48674622,
+     "last": 83520,
+     "volume": 2932.83774157,
+     "vwap": 84074.7,
+     "low": 82981.3,
+     "high": 85604,
+     "change": 171.8,
+     "change_pct": 0.21,
+     "trades": 148102,
+     "timestamp": "2026-10-01T07:56:00.844551Z"
+    }
+   ]
+  },
+  {
+   "channel": "ticker",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bid": 83519.9,
+     "bid_qty": 4.48274254,
+     "ask": 83520,
+     "ask_qty": 4.4837515,
+     "last": 83520,
+     "volume": 2932.84073629,
+     "vwap": 84074.7,
+     "low": 82981.3,
+     "high": 85604,
+     "change": 171.8,
+     "change_pct": 0.21,
+     "trades": 148103,
+     "timestamp": "2026-10-01T07:56:00.943053Z"
+    }
+   ]
+  },
+  {
+   "channel": "ticker",
+   "type": "update",
+   "data": [
+    {
+     "symbol": "BTC/USD",
+     "bid": 83519.9,
+     "bid_qty": 4.48274254,
+     "ask": 83520,
+     "ask_qty": 4.13805474,
+     "last": 83520,
+     "volume": 2933.18643305,
+     "vwap": 84074.6,
+     "low": 82981.3,
+     "high": 85604,
+     "change": 171.8,
+     "change_pct": 0.21,
+     "trades": 148104,
+     "timestamp": "2026-10-01T07:56:00.960099Z"
+    }
+   ]
+  }
+ ],
+ "heartbeat:": [
+  {
+   "channel": "heartbeat"
+  },
+  {
+   "channel": "heartbeat"
+  },
+  {
+   "channel": "heartbeat"
+  }
+ ]
+}

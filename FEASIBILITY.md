@@ -53,8 +53,8 @@
 截图（`docs/screens/`）：
 
 - `live-2-front-closeup.jpg`：实时行情，前线近景
-- `live-3-day.jpg`：实时行情，白天全景，含交易所权重和偏差
-- `sim-rounds-1-win.jpg`：熊方攻下牛方基地
+- `live-1-overview.jpg`：实时行情，电影镜头近景（行军、交火、倒地）
+- `sim-rounds-1-win.jpg`：牛方攻下熊方基地（中文界面，含爆炸、焦痕、冲击波）
 - `sim-4-night.jpg`：夜晚光照
 
 ### 未完全验证的部分

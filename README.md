@@ -1,6 +1,6 @@
-# Bitcoin Battle（验证项目）
+# Bitcoin Battle
 
-这是对 Newhedge「Bitcoin Battlefield」（<https://newhedge.io/bitcoin/battlefield>，推文 <https://x.com/newhedge_io/status/2104903265959760161>）的可行性验证。BTC 价格就是战线，盘口挂单就是兵力，主动成交、爆仓和期权成交会变成战场上的炮击。
+这是对 Newhedge「Bitcoin Battlefield」（<https://newhedge.io/bitcoin/battlefield>，推文 <https://x.com/newhedge_io/status/2104903265959760161>）的实现。BTC 价格就是战线，盘口挂单就是兵力，主动成交、爆仓和期权成交会变成战场上的炮击。
 
 - 可行性结论和验证证据：[docs/research/feasibility.md](docs/research/feasibility.md)
 - **接手开发（人或 agent）请先读 [AGENTS.md](AGENTS.md)**，全部文档索引在 [docs/README.md](docs/README.md)

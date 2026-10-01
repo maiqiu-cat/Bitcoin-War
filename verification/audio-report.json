@@ -1,5 +1,6 @@
 {
- "at": "2026-10-01T14:23:34.167Z",
+ "at": "2026-10-01T15:28:15.040Z",
+ "url": "http://localhost:4174/?sim&lang=zh",
  "autoplay": {
   "state": "running",
   "ctxState": "running",
@@ -9,6 +10,38 @@
   "intensity": 0.202,
   "sampleRate": 48000,
   "hint": false
+ },
+ "button": {
+  "unlock": {
+   "state": "running",
+   "ctxState": "running",
+   "loaded": true,
+   "buffers": 36,
+   "music": "calm",
+   "intensity": 0.207,
+   "sampleRate": 48000,
+   "hint": false
+  },
+  "off": {
+   "state": "off",
+   "ctxState": "suspended",
+   "loaded": true,
+   "buffers": 36,
+   "music": "calm",
+   "intensity": 0.208,
+   "sampleRate": 48000,
+   "hint": false
+  },
+  "back": {
+   "state": "running",
+   "ctxState": "running",
+   "loaded": true,
+   "buffers": 36,
+   "music": "calm",
+   "intensity": 0.215,
+   "sampleRate": 48000,
+   "hint": false
+  }
  },
  "locked": {
   "state": "locked",
@@ -60,7 +93,7 @@
   "loaded": true,
   "buffers": 36,
   "music": "victory",
-  "intensity": 0.908,
+  "intensity": 0.907,
   "sampleRate": 48000,
   "hint": false
  },

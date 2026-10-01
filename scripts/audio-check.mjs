@@ -58,6 +58,24 @@ try {
     check(d.state === 'running' && d.loaded && d.music === 'calm' && !d.hint, `A. autoplay allowed, no click: state=${d.state}, assets=${d.buffers}, music=${d.music}, hint=${d.hint}`);
     await b.close();
   }
+  // A speaker button is the most obvious first click. It must enable sound while locked.
+  {
+    const b = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--ignore-gpu-blocklist'] });
+    const p = await b.newPage();
+    await p.goto(URL, { waitUntil: 'domcontentloaded' });
+    await waitFor(p, (x) => x.loaded && x.state === 'locked', 15000);
+    await p.click('[data-k=sound]');
+    const d = await waitFor(p, (x) => x.state === 'running', 3000);
+    check(d.state === 'running', `B0. speaker button unlocks sound: state=${d.state}`);
+    await p.click('[data-k=sound]');
+    const off = await waitFor(p, (x) => x.state === 'off', 3000);
+    check(off.state === 'off', `B0a. speaker button mutes: state=${off.state}`);
+    await p.click('[data-k=sound]');
+    const back = await waitFor(p, (x) => x.state === 'running', 3000);
+    check(back.state === 'running', `B0b. speaker button restores sound: state=${back.state}`);
+    report.button = { unlock: d, off, back };
+    await b.close();
+  }
   // ---------------------------------------------------------------- B: normal policy
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--ignore-gpu-blocklist'] });
   const page = await browser.newPage();

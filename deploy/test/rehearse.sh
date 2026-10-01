@@ -49,7 +49,10 @@ fail() { echo "ASSERT FAILED: $*"; exit 1; }
 ok() { echo "  ok: $*"; }
 step() { echo; echo "===== $*"; }
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq >/dev/null && apt-get install -y -qq nginx curl openssl ca-certificates iproute2 procps >/dev/null 2>&1 || fail "apt-get"
+for i in 1 2 3; do # the package mirror can be slow or flaky: retry
+  apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq nginx curl openssl ca-certificates iproute2 procps >/dev/null 2>&1 && break
+  [ "$i" = 3 ] && fail "apt-get (network?)"; echo "apt-get attempt $i failed, retrying"; sleep 5
+done
 ip addr add 192.0.2.10/32 dev lo && ip addr add 198.51.100.7/32 dev lo || fail "ip addr (needs --cap-add NET_ADMIN)"
 rm -f /etc/nginx/sites-enabled/default
 mkdir -p /var/www/other /var/www/miner /etc/ssl/other && echo other-ok >/var/www/other/index.html && echo miner >/var/www/miner/index.html

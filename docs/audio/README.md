@@ -68,7 +68,7 @@ Vite 会把所有 `.m4a` 打成带哈希的 `assets/*.m4a`，线上按一年不�
 
 ```bash
 pnpm test                         # tests/audio.test.ts：纯逻辑 + 资源清单完整性
-pnpm build && pnpm verify:audio   # 浏览器：A 自动播放 / B1–B7 拦截、点击、激战、胜利、M 键、无错误 / C 离线渲染
+pnpm build && pnpm verify:audio   # 浏览器：A 自动播放 / B0 喇叭按钮解锁和开关 / B1–B7 拦截、点击、激战、胜利、M 键、无错误 / C 离线渲染
 open verification/audio-preview.wav   # 36 秒场景：平静 → 激战 → 炮击和爆仓 → 胜利
 ```
 
@@ -76,6 +76,7 @@ open verification/audio-preview.wav   # 36 秒场景：平静 → 激战 → 炮
 
 - A：允许自动播放时，不用点击就进入 running，平静曲在播放，没有显示提示条。
 - B：被拦截时预加载完成并显示提示条；点击一次就出声；强度拉高后切到激战曲；胜利时切到胜利曲；M 键开关正常；没有运行时错误。
+- B0：浏览器拦截自动播放时，直接点击喇叭按钮会解锁并出声；再次点击可静音、恢复。2026-10-01 的独立核查发现并修复了第一次点击反而静音的问题。
 - C：峰值 0.83，爆炸比配乐底层高 16.2 dB。
 
 ### 无缝循环怎么检查

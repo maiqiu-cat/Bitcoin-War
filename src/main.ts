@@ -42,7 +42,12 @@ world.audio = audio;
 // Default on: start loading and try to play right away; browsers that block autoplay
 // will start on the first click / key / touch anywhere.
 audio.boot();
-for (const ev of ['pointerdown', 'keydown', 'touchstart'] as const) window.addEventListener(ev, () => audio.unlock(), { passive: true });
+for (const ev of ['pointerdown', 'keydown', 'touchstart'] as const) window.addEventListener(ev, (e) => {
+  // Let the speaker button handle its own first gesture. Unlocking on pointerdown and then
+  // toggling on click would immediately turn the newly started sound back off.
+  if (e.target instanceof Element && e.target.closest('[data-k="sound"]')) return;
+  audio.unlock();
+}, { passive: true });
 
 let lightingChoice: LightingName | 'auto' = (params.get('light') as LightingName) ?? 'auto';
 const applyLighting = () => world.setLighting(lightingChoice === 'auto' ? autoLighting() : lightingChoice);
@@ -58,7 +63,7 @@ const hud = new Hud(document.getElementById('hud')!, simMode ? 'sim' : 'live', {
   onCinematic: () => world.rig.setCinematic(!world.rig.cinematic),
   onSource: (src) => (depthSource = src),
   onFocus: () => world.field && world.rig.focusFront(world.field.x(world.frontPrice)),
-  onSound: () => audio.toggle(),
+  onSound: () => audio.state === 'locked' ? audio.unlock() : audio.toggle(),
 });
 audio.onState = (s) => hud.setSound(s);
 hud.setSound(audio.state);

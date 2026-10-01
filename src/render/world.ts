@@ -4,6 +4,7 @@ import type { FeedItem } from '../data/market';
 import type { LayoutResult } from '../game/armies';
 import type { Round, Team } from '../game/battle';
 import { FIELD_DEPTH, frontWave, type FieldMap } from '../game/field';
+import type { AudioEngine } from '../audio/engine';
 import { fmtPrice, fmtUsd } from '../ui/format';
 import { t } from '../ui/i18n';
 import { BASE_CENTER, Bases, TEAM_COLORS } from './bases';
@@ -41,6 +42,8 @@ export class World {
   targetPrice = 0;
   momentum = 0;
   onModeChange?: (cinematic: boolean) => void;
+  /** Optional battle audio; every visual event below also triggers its sound. */
+  audio: AudioEngine | null = null;
   private amp = 2;
   private time = 0;
   private hazeT = 0;
@@ -130,6 +133,15 @@ export class World {
     this.frontPrice = this.targetPrice = price;
     this.terrain.setField(field);
     this.bases.reset();
+    this.audio?.horn();
+  }
+
+  /** Normalized screen x (-1..1) and camera distance of a world point, for stereo placement. */
+  private ear(p: THREE.Vector3) {
+    const d = this.camera.position.distanceTo(p);
+    const v = tmp2.copy(p).project(this.camera);
+    const x = v.z > 1 ? Math.sign(v.x || 1) : v.x; // behind the camera: hard side
+    return { x, d };
   }
 
   setPrice(price: number) {
@@ -192,7 +204,12 @@ export class World {
     if (e.kind === 'option') {
       const z = (Math.random() - 0.5) * FIELD_DEPTH * 0.8;
       const x = this.frontX(z) - dir * (8 + Math.random() * 20);
-      this.effects.flare(new THREE.Vector3(x, groundHeight(x, z) + 0.5, z), color);
+      const p = new THREE.Vector3(x, groundHeight(x, z) + 0.5, z);
+      this.effects.flare(p, color);
+      if (this.audio) {
+        const e2 = this.ear(p);
+        this.audio.flare(e2.x, e2.d);
+      }
       return;
     }
 
@@ -220,10 +237,19 @@ export class World {
     z = THREE.MathUtils.clamp(z, -FIELD_DEPTH / 2 + 3, FIELD_DEPTH / 2 - 3);
     const tx = this.frontX(z) + dir * (1.5 + Math.random() * (e.kind === 'liq' ? 10 : 5) + size);
     const to = new THREE.Vector3(tx, groundHeight(tx, z) + 0.3, z);
+    if (this.audio) {
+      const src = this.ear(from);
+      if (e.kind === 'liq') this.audio.whistle(src.x, src.d, 0.5 + from.distanceTo(to) / 45);
+      else this.audio.cannon(src.x, src.d, size);
+    }
     this.effects.shell(from, to, size, color, () => {
       this.army.hit(defender, to.x, to.z, 2 + size * 1.6, Math.round(4 + size * 5));
       this.floatLabel(to, e);
       this.shakeNear(to, size);
+      if (this.audio) {
+        const hit = this.ear(to);
+        this.audio.explosion(hit.x, hit.d, e.kind === 'liq' ? size * 1.25 : size);
+      }
     });
     if ((e.kind === 'liq' && e.usd >= 250_000) || e.usd >= 600_000) this.rig.focusEvent(to, e.usd >= 2_000_000 ? 2 : 1);
   }
@@ -244,6 +270,7 @@ export class World {
   celebrate(winner: Team) {
     const loser: Team = winner === 'bulls' ? 'bears' : 'bulls';
     this.bases.capture(loser, winner);
+    this.audio?.fanfare(winner);
     for (let i = 0; i < 12; i++) this.celebrations.push({ at: this.time + 0.3 + i * 0.38, team: winner });
   }
 
@@ -266,6 +293,10 @@ export class World {
         const to = tmp2.set(tx, groundHeight(tx, z) + 0.5 + Math.random() * 0.5, z);
         this.effects.muzzle(from, new THREE.Vector3(dir, 0, 0));
         this.effects.tracer(from, to, this.teamGlow[team]);
+        if (this.audio) {
+          const e2 = this.ear(from);
+          this.audio.rifle(e2.x, e2.d);
+        }
         if (Math.random() < 0.035) this.army.hit(team === 'bulls' ? 'bears' : 'bulls', tx, z, 0.9, 1);
       }
     }
@@ -304,6 +335,10 @@ export class World {
       const size = 1.4 + Math.random() * 1.6;
       this.effects.explosion(p, size, this.teamGlow[c.team]);
       this.shakeNear(p, size * 0.6);
+      if (this.audio) {
+        const e2 = this.ear(p);
+        this.audio.explosion(e2.x, e2.d, size);
+      }
       // fireworks above the captured base
       this.effects.flare(tmp.set(p.x, p.y + 2, p.z), this.teamGlow[c.team]);
     }

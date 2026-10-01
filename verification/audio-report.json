@@ -1,0 +1,52 @@
+{
+ "at": "2026-10-01T13:06:32.278Z",
+ "before": {
+  "state": "locked",
+  "hint": true,
+  "text": "点击画面任意位置，开启战场音效"
+ },
+ "after": {
+  "state": "running",
+  "ctxState": "running",
+  "intensity": 0.438,
+  "sampleRate": 48000,
+  "hint": false
+ },
+ "run": {
+  "state": "running",
+  "ctxState": "running",
+  "intensity": 0.734,
+  "sampleRate": 48000
+ },
+ "off": {
+  "state": "off",
+  "pref": "off",
+  "btn": "off"
+ },
+ "on": "running",
+ "errors": [],
+ "levels": {
+  "seconds": 32,
+  "sampleRate": 44100,
+  "peak": 0.875,
+  "rmsDb": -16.1,
+  "windowsDb": [
+   -14.6,
+   -23.1,
+   -23,
+   -18.7,
+   -18.7,
+   -15.1,
+   -15.4,
+   -15.3,
+   -16.1,
+   -13.6,
+   -14.8,
+   -14.7,
+   -14.5,
+   -14,
+   -19.7,
+   -19.9
+  ]
+ }
+}

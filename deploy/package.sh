@@ -41,7 +41,8 @@ JSON
 (cd "$kit" && find . -type f ! -name MANIFEST.sha256 | LC_ALL=C sort | sed 's|^\./||' | xargs shasum -a 256 >MANIFEST.sha256)
 
 # COPYFILE_DISABLE keeps macOS AppleDouble (._*) files out of the archive.
-COPYFILE_DISABLE=1 tar -czf "deploy/out/battle-$id.tar.gz" -C deploy/out "battle-$id"
+# --uid/--gid: archive members owned by root instead of the macOS user (uid 501, gid 20).
+COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -czf "deploy/out/battle-$id.tar.gz" -C deploy/out "battle-$id"
 (cd deploy/out && shasum -a 256 "battle-$id.tar.gz" >"battle-$id.tar.gz.sha256")
 echo "kit:     $kit"
 echo "archive: deploy/out/battle-$id.tar.gz ($(du -h "deploy/out/battle-$id.tar.gz" | cut -f1))"

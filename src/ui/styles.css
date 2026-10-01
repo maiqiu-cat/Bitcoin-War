@@ -427,7 +427,7 @@ button.lang {
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 286px;
+  width: 318px;
 }
 
 .tr button {
@@ -787,6 +787,47 @@ button.lang {
 
 .banner p .r {
   color: var(--bear);
+}
+
+.tr button.sound.muted {
+  opacity: 0.55;
+}
+
+.sound-hint {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  translate: -50% 0;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(12, 14, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 12px;
+  pointer-events: auto;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  animation: hintPulse 2.4s ease-in-out infinite;
+}
+
+.sound-hint.show {
+  display: inline-flex;
+}
+
+.sound-hint span {
+  display: inline-flex;
+  color: var(--bull);
+}
+
+@keyframes hintPulse {
+  50% {
+    box-shadow:
+      0 6px 24px rgba(0, 0, 0, 0.35),
+      0 0 0 6px rgba(65, 216, 119, 0.12);
+  }
 }
 
 .hints {

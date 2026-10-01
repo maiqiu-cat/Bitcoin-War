@@ -44,6 +44,7 @@
 | 交易所色点 | 在线的交易所有一圈扩散的 ping 动画 |
 | 3D 飘字 | `floatUp`：弹出、上浮、淡出，持续 2.6s |
 | 降低动态 | `prefers-reduced-motion` 时关闭所有 CSS 动画 |
+| 声音 | 右上角喇叭按钮（`data-k=sound`，`data-state` 为 off、locked 或 running）；浏览器锁着音频时，底部显示呼吸动画提示条 `.sound-hint`，点击任意位置就会解锁 |
 
 - 字体：`@fontsource-variable/inter`（本地打包）+ PingFang SC 回退。数字统一用 `tabular-nums`。
 - 设计变量：`--bull #41d877`、`--bear #ff5a5a`、`--panel`、`--ease cubic-bezier(.22,1,.36,1)`。

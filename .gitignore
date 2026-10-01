@@ -5,3 +5,4 @@ verification/*.png
 !verification/README.md
 tests/fixtures/_capture/
 deploy/out/
+verification/*.wav

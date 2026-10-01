@@ -5,9 +5,10 @@
 | 命令 | 检查什么 | 通过标准 | 耗时 |
 | --- | --- | --- | --- |
 | `pnpm build` | 类型检查（tsc strict，`noUnusedLocals/Parameters`）和打包 | 没有报错 | <5s |
-| `pnpm test` | 40 个单测（下面有清单） | 全部通过 | <1s |
+| `pnpm test` | 50 个单测（下面有清单） | 全部通过 | <1s |
 | `pnpm verify:feeds [秒]` | 用 Node 连真实交易所跑 N 秒（默认 45），输出每家的连接次数、断线、消息数、成交数、盘口档数、价差、相对指数的偏差和权重，并做 6 项断言 | 6 项全部 PASS；报告写入 `verification/feeds-report.json` | N 秒 |
 | `pnpm build && pnpm verify:screens` | 启动 vite preview，在无头 Chrome（1600×900）里跑 4 组场景并截图；收集 FPS、单位数、指数、回合、横幅、语言和报错 | 输出 `No runtime errors`（Binance 的 451 和 fstream 报错属于预期，已过滤），FPS 和单位数合理，**人工看过截图**；报告在 `verification/screens-report.json` | 约 2 分钟 |
+| `pnpm build && pnpm verify:audio` | 无头 Chrome：解锁前显示提示、点击后进入 running、音效链路、M 键开关，再离线渲染 32 秒试听（`verification/audio-preview.wav`，不入库） | 全部 PASS，并且人工听一遍 | 约 30 秒 |
 | `pnpm capture:fixtures [秒]` | 抓真实消息到 `tests/fixtures/_capture/`（已加入 gitignore） | 各交易所都有样本 | N 秒 |
 
 ### `verify:feeds` 的 6 项断言
@@ -37,6 +38,7 @@
 | `market.test.ts`（9） | OrderBook：快照和增量、截断、去交叉。<br>MarketHub：USDT 换算后按成交额加权、离群和过期剔除、大单合并、不同方向和隔太远的成交不合并、爆仓方向、深度分桶和过期盘口剔除。 |
 | `battle.test.ts`（12） | BattleEngine：开局、牛方胜、间歇、下一局、熊方胜。<br>narrate：8 种情形。<br>FieldMap：映射和反解、刻度步长、波动有界。<br>layoutArmies：key 唯一、前线/场内/储备拆分、在本方一侧、结果确定、列顺序是排列、niceUsd。 |
 | `i18n.test.ts`（4） | 两份字典的键集合一致、覆盖所有 StatusKey 和 FeedType、占位符一致、变量替换和切换语言。 |
+| `audio.test.ts`（10） | 空间化、限流、强度计算和平滑、各声部音量、和弦进行、鼓点、贝斯、声音偏好读取。 |
 
 解析器测试读取的是 `tests/fixtures/*.json` 里的真实消息，见 [tests/fixtures/README.md](../../tests/fixtures/README.md)。
 
@@ -52,6 +54,9 @@
 | 2026-10-01（发布前复核） | `pnpm verify:feeds 60` | 6/6 PASS；5 家现货进入指数，Binance 451 属已知限制 |
 | 2026-10-01（发布前复核） | `pnpm verify:screens` | 11 张截图已人工检查；模拟与实盘场景约 60 FPS，中英文切换正常，0 个非预期运行时错误 |
 | 2026-10-01（生产验收） | `https://battle.ondream.ai/` | HTTPS 200、HTTP 301、首页 SHA 与本地构建一致；桌面 Chrome 4 家交易所进入指数、约 60 FPS、中英切换正常，0 个非预期错误；390px Chrome 模拟视口有文字重叠 |
+
+| 2026-10-01 | 生产环境只读验收（Claude） | 公网：301 跳转 HTTPS、证书校验通过、HTTP/2；静态资源 gzip 加 immutable 缓存，字体 MIME 正确。服务器：版本 `20261001-1225-6ea3766` 的文件与发布包一致；Nginx 与基线相比只多了 `zz-battle.ondream.ai.conf`；其他站点返回码、默认证书、监听端口、容器全部和基线一致；无错误日志。无头 Chrome：60 FPS，4 家交易所，无非预期错误。问题：网站文件属主是 uid 501（脚本已修，下次发布生效） |
+| 2026-10-01 | `verify:audio` | 全部 PASS：峰值 0.875，−16.1 dBFS，平静段 −23.1 dB，激战段 −14.4 dB |
 
 每次跑完有意义的验证，往这张表里加一行。
 

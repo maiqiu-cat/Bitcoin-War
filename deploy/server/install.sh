@@ -252,6 +252,7 @@ deploy() {
   install -d -m 755 "$SITE" "$SITE/releases" "$ACME" "$ACME/.well-known" "$ACME/.well-known/acme-challenge"
   [ ! -e "$SITE/releases/$REL" ] || die "release $REL already exists — build a new kit instead of overwriting"
   cp -a "$KIT/site" "$SITE/releases/$REL"
+  chown -R root:root "$SITE/releases/$REL" # kits built on macOS carry uid 501 / gid 20
   find "$SITE/releases/$REL" -type d -exec chmod 755 {} +
   find "$SITE/releases/$REL" -type f -exec chmod 644 {} +
   install -d -m 700 "$STATE"

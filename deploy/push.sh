@@ -21,4 +21,4 @@ SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o Ser
 ssh "${SSH_OPTS[@]}" "$HOST" "install -d -m 700 $REMOTE_DIR"
 scp "${SSH_OPTS[@]}" "$archive" "$archive.sha256" "$HOST:$REMOTE_DIR/"
 ssh "${SSH_OPTS[@]}" "$HOST" "set -e; cd $REMOTE_DIR; sha256sum -c $name.tar.gz.sha256; \
-  if [ ! -d $name ]; then tar -xzf $name.tar.gz; fi; bash $name/install.sh $cmd"
+  if [ ! -d $name ]; then tar --no-same-owner -xzf $name.tar.gz; fi; bash $name/install.sh $cmd"

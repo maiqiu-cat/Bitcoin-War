@@ -33,6 +33,8 @@ const ICONS = {
   camera: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3z"/></svg>`,
   target: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`,
   full: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`,
+  soundOn: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>`,
+  soundOff: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>`,
 };
 
 export interface HudCallbacks {
@@ -40,6 +42,7 @@ export interface HudCallbacks {
   onCinematic(): void;
   onSource(src: ExchangeId | 'all'): void;
   onFocus(): void;
+  onSound(): void;
 }
 
 export interface BannerSpec {
@@ -114,6 +117,7 @@ export class Hud {
           <button data-k="cine" data-i18n-title="cinematic.title">${ICONS.camera}<span data-i18n="cinematic"></span></button>
           <button data-k="focus" data-i18n-title="front.title">${ICONS.target}<span data-i18n="front"></span></button>
           <button data-k="full" data-i18n-title="full.title">${ICONS.full}</button>
+          <button data-k="sound" class="sound" data-i18n-title="sound.title">${ICONS.soundOn}</button>
           <button data-k="lang" class="lang" data-i18n-title="lang.title" data-i18n="lang.button"></button>
         </div>
         <div class="venues" data-k="venues"></div>
@@ -138,6 +142,7 @@ export class Hud {
         <h1 data-k="bTitle"></h1>
         <p data-k="bSub"></p>
       </div>
+      <button class="sound-hint" data-k="soundHint"><span>${ICONS.soundOn}</span><b data-i18n="sound.hint"></b></button>
       <div class="hints" data-i18n="hints"></div>
     `;
     root.querySelectorAll<HTMLElement>('[data-k]').forEach((n) => (this.el[n.dataset.k!] = n));
@@ -152,6 +157,9 @@ export class Hud {
       else document.documentElement.requestFullscreen?.();
     });
     this.el.lang.addEventListener('click', () => setLang(getLang() === 'zh' ? 'en' : 'zh'));
+    this.el.sound.addEventListener('click', () => cb.onSound());
+    // The hint itself is a click target; the global pointerdown already unlocks audio.
+    this.el.soundHint.addEventListener('click', () => this.el.soundHint.classList.remove('show'));
     window.addEventListener('keydown', (e) => {
       if (e.key.toLowerCase() === 'l' && !(e.target instanceof HTMLSelectElement)) setLang(getLang() === 'zh' ? 'en' : 'zh');
     });
@@ -194,6 +202,16 @@ export class Hud {
       o.textContent = exLabel(id);
       sel.appendChild(o);
     }
+  }
+
+  /** Sound button icon + the 'click to enable sound' hint while the browser keeps audio locked. */
+  setSound(state: 'off' | 'locked' | 'running') {
+    const b = this.el.sound;
+    b.innerHTML = state === 'off' ? ICONS.soundOff : ICONS.soundOn;
+    b.classList.toggle('on', state === 'running');
+    b.classList.toggle('muted', state === 'off');
+    b.dataset.state = state;
+    this.el.soundHint.classList.toggle('show', state === 'locked');
   }
 
   setCinematic(on: boolean) {

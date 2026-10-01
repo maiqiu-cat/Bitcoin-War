@@ -1,5 +1,6 @@
 import '@fontsource-variable/inter';
 import './ui/styles.css';
+import { AudioEngine, renderPreview } from './audio/engine';
 import { ALL_SOURCES, createFeeds } from './data/feeds/exchanges';
 import { MarketHub, type FeedItem } from './data/market';
 import { SimFeed } from './data/sim';
@@ -34,6 +35,12 @@ const world = new World(document.getElementById('app')!, {
 });
 const battle = new BattleEngine({ halfRange });
 
+/* ------------------------------------------------------------------- Audio */
+// Browsers only start audio after a user gesture; the first click/key/touch unlocks it.
+const audio = new AudioEngine();
+world.audio = audio;
+for (const ev of ['pointerdown', 'keydown', 'touchstart'] as const) window.addEventListener(ev, () => audio.unlock(), { passive: true });
+
 let lightingChoice: LightingName | 'auto' = (params.get('light') as LightingName) ?? 'auto';
 const applyLighting = () => world.setLighting(lightingChoice === 'auto' ? autoLighting() : lightingChoice);
 applyLighting();
@@ -48,12 +55,16 @@ const hud = new Hud(document.getElementById('hud')!, simMode ? 'sim' : 'live', {
   onCinematic: () => world.rig.setCinematic(!world.rig.cinematic),
   onSource: (src) => (depthSource = src),
   onFocus: () => world.field && world.rig.focusFront(world.field.x(world.frontPrice)),
+  onSound: () => audio.toggle(),
 });
+audio.onState = (s) => hud.setSound(s);
+hud.setSound(audio.state);
 hud.setLightingValue(lightingChoice);
 hud.setCinematic(world.rig.cinematic);
 world.onModeChange = (on) => hud.setCinematic(on);
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'f' && world.field) world.rig.focusFront(world.field.x(world.frontPrice));
+  if (e.key.toLowerCase() === 'm' && !(e.target instanceof HTMLSelectElement)) audio.toggle();
 });
 
 /* ------------------------------------------------------------------ Events */
@@ -159,6 +170,12 @@ function tick() {
   hud.setRound(battle.round, progress, status, battle.score());
   const f5 = hub.flow(5_000);
   world.setActivity(f5.buy / 5, f5.sell / 5);
+  audio.setActivity({
+    flowPerSec: (f5.buy + f5.sell) / 5,
+    progress,
+    storming: status === 'bullsStorm' || status === 'bearsStorm',
+    eventsPerMin: hub.feed.filter((e) => e.kind !== 'option' && now - e.ts < 60_000).length,
+  });
 
   // Depth chart (selectable source) every tick, heavier panels once a second.
   const half = price * halfRange * 1.6;
@@ -184,6 +201,7 @@ function frame(t: number) {
   last = t;
   world.frame(dt);
   hud.frame(dt);
+  audio.frame(dt);
   stats.frames++;
   fpsAcc += dt;
   fpsN++;
@@ -196,4 +214,4 @@ function frame(t: number) {
 requestAnimationFrame(frame);
 
 // Debug/verification hook (used by scripts/screenshot.mjs).
-Object.assign(window, { __bb: { hub, battle, world, stats, sim: simMode, army: () => world.army.stats } });
+Object.assign(window, { __bb: { hub, battle, world, stats, sim: simMode, army: () => world.army.stats, audio, renderPreview } });

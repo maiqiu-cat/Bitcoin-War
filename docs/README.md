@@ -11,6 +11,7 @@
 | [game-design/](game-design/) | [mapping-rules.md](game-design/mapping-rules.md)：行情 → 战场的全部映射规则和可调参数 | 改玩法或参数 |
 | [rendering/](rendering/) | [visual-system.md](rendering/visual-system.md)：场景、着色器、实例化、特效、后期、镜头、性能 | 改画面 |
 | [ui/](ui/) | [hud-and-i18n.md](ui/hud-and-i18n.md)：HUD 结构、动效、多语言做法 | 改界面或文案 |
+| [audio/](audio/) | [README.md](audio/README.md)：配乐和音效的设计、信号链、触发点、调音位置、验证方法 | 改声音 |
 | [verification/](verification/) | [README.md](verification/README.md)：测试清单、验证脚本、最新结果、人工验收清单 | 每次改完 |
 | [decisions/](decisions/) | 架构决策记录（ADR），说明为什么这样做、什么时候该重新评估 | 想推翻现有设计之前 |
 | [research/](research/) | [feasibility.md](research/feasibility.md)：可行性评估<br>[newhedge-reference.md](research/newhedge-reference.md)：原版逐帧拆解<br>[newhedge-frames/](research/newhedge-frames/)：原视频参考帧 | 对照原版做效果 |

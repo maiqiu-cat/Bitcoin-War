@@ -15,6 +15,7 @@ pnpm test                # 单元测试（解析器使用真实抓取的交易�
 pnpm verify:feeds [秒]   # 在 Node 里跑真实交易所连接，输出指数/盘口/事件检查（默认 45 秒）
 pnpm build && pnpm verify:screens   # 无头 Chrome 截图 + FPS/报错收集，输出到 verification/
 pnpm capture:fixtures [秒]  # 抓取真实交易所消息到 tests/fixtures/_capture/，用来刷新测试夹具
+pnpm build && pnpm verify:audio  # 音频检查，并渲染试听文件 verification/audio-preview.wav
 ```
 
 ### URL 参数
@@ -30,10 +31,11 @@ pnpm capture:fixtures [秒]  # 抓取真实交易所消息到 tests/fixtures/_ca
 | `lang` | `zh` / `en` 界面语言（也可点右上角按钮或按 L 切换，选择会记住） | 跟随浏览器 |
 | `post` | `0` 关闭后期处理（泛光、移轴、暗角） | 开 |
 | `q` | `low` 关闭阴影和后期处理，并使用 1x 像素比（适合低配设备） | high |
+| `sound` | `0` 关闭声音（不记住选择；按钮和 M 键的选择会记住） | 开（浏览器要求先点击一次才出声） |
 
 ### 操作
 
-拖动旋转，滚轮缩放，W/A/S/D 平移，Q/E 环绕，C 切换电影镜头，F 回到前线，L 切换中英文。
+拖动旋转，滚轮缩放，W/A/S/D 平移，Q/E 环绕，C 切换电影镜头，F 回到前线，L 切换中英文，M 开关声音。
 
 ### 画面效果
 
@@ -42,6 +44,7 @@ pnpm capture:fixtures [秒]  # 抓取真实交易所消息到 tests/fixtures/_ca
 - 交火：前线士兵按主动成交流量对射（曳光弹、枪口火光）；大单、爆仓是炮击，带碎块、焦痕、冲击波、镜头震动。
 - 环境：树木随风摆动、云影掠过地面、前线硝烟、战线流光脉冲，价格变动时战线闪多空颜色。
 - 回合：攻陷后败方旗帜降下、换成胜方颜色再升起，基地上空连环爆炸。
+- 声音：随行情加码的程序化配乐（D 小调、92 BPM，平静时只有弦乐，激烈时加入太鼓、军鼓、铜管），步枪、坦克炮、爆炸、爆仓炮弹呼啸、信号弹、开战号角、胜利号曲都按画面位置做立体声。详见 [docs/audio/README.md](docs/audio/README.md)。
 
 ## 结构
 

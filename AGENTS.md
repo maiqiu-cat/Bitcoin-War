@@ -40,11 +40,12 @@
 cd ~/Documents/Bitcoin\ Battle
 pnpm install
 pnpm dev                       # http://localhost:5173（离线模拟：/?sim）
-pnpm test                      # Vitest 单测（40 个）
+pnpm test                      # Vitest 单测（50 个）
 pnpm build                     # tsc --noEmit + vite build
 pnpm verify:feeds [秒]         # Node 里跑真实交易所连接并做断言，默认 45 秒
 pnpm verify:screens            # 先 build；无头 Chrome 截图，收集 FPS 和报错
 pnpm capture:fixtures [秒]     # 抓真实消息到 tests/fixtures/_capture/（不覆盖现有夹具）
+pnpm build && pnpm verify:audio  # 无头 Chrome 音频检查 + 渲染 verification/audio-preview.wav
 ```
 
 - macOS 没有 `timeout` 命令。需要给命令限时的话，用 `perl -e 'alarm 120; exec @ARGV' <cmd>`。
@@ -57,6 +58,7 @@ src/data/       行情：交易所解析与连接、订单簿、MarketHub（指�
 src/game/       纯逻辑：回合与播报、价格→坐标、深度→兵力布局（全部可单测，不依赖 DOM 和 three）
 src/render/     Three.js：World 总装、地形、兵力、特效、基地、光照、镜头、后期
 src/ui/         HUD、i18n 字典、格式化
+src/audio/      程序化背景音乐和战斗音效（Web Audio，无音频文件），见 docs/audio/README.md
 src/main.ts     装配与循环（250ms 逻辑 tick + 每帧渲染）
 tests/          Vitest；tests/fixtures/ 是 2026-10-01 抓到的真实交易所消息
 scripts/        verify-feeds.ts、screenshot.mjs、capture-fixtures.mjs
@@ -74,7 +76,8 @@ docs/           全部开发文档（见 docs/README.md）
 5. **要发光就给 HDR 颜色**：后期管线是 HalfFloat → Bloom → 移轴、暗角 → OutputPass（色调映射）。要让 Bloom 起作用，颜色必须超过阈值，可以用 `color.multiplyScalar(n)` 或调 shader 里的 intensity。不要靠调低阈值来解决，那样会让白天的白墙发光。
 6. **`src/game/` 不准引入 `three` 和 DOM**，保持可测试。
 7. **依赖要克制**：目前运行时依赖只有 `three` 和 `@fontsource-variable/inter`。字体必须本地打包，国内网络加载不了 Google Fonts。
-8. 文档和提交说明用中文或英文都可以，与已有风格保持一致。提交信息末尾带 `Co-Authored-By`，按当前 agent 的约定写。
+8. **新增画面事件时也要配上声音**：在 `world.ts` 里调用 `this.audio?.xxx(...)`，经过 `ear()` 做空间化，并在 `AudioEngine` 的限流配置里给它一个上限。不要引入未授权的音频素材。
+9. 文档和提交说明用中文或英文都可以，与已有风格保持一致。提交信息末尾带 `Co-Authored-By`，按当前 agent 的约定写。
 
 ## 6. 完成标准（每次改动后）
 
@@ -82,6 +85,7 @@ docs/           全部开发文档（见 docs/README.md）
 2. `pnpm test`：全部通过。
 3. 动了渲染或 HUD：`pnpm build && pnpm verify:screens`，然后**亲自看** `verification/*.png`。报告里的 FPS 和单位数要合理，并且没有「非预期」运行时错误。Binance 451 属于预期内，已被脚本过滤。
 4. 动了数据层：`pnpm verify:feeds 60`，6 项检查全部 PASS。
+4b. 动了音频：`pnpm build && pnpm verify:audio` 全部 PASS，并且听一下 `verification/audio-preview.wav`。
 5. 更新 [docs/handoff/session-log.md](docs/handoff/session-log.md)；有新的待办或已知问题，写进 [docs/roadmap/backlog.md](docs/roadmap/backlog.md)。
 
 ## 7. 环境陷阱（已踩过）

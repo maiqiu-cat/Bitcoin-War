@@ -80,6 +80,7 @@ step "deploy #1 (records baseline first)"
 bash $K1/install.sh deploy 2>&1 | grep -E "baseline|installed|deployed|ERROR" | tail -4
 [ "$(cat /root/battle-deploy/baseline/nginx-T.sha256)" = "$FP0" ] || fail "baseline fingerprint"; ok "baseline = pre-change nginx fingerprint"
 get | grep -q '<!doctype html>' || fail "site not served"; ok "site served over http"
+[ "$(stat -c %U:%G /var/www/battle.ondream.ai/current/index.html)" = root:root ] || fail "release files not owned by root"; ok "release files owned by root:root"
 [ "$(other)" = other-ok ] || fail "other site broken"; ok "other site intact"
 [ "$(defcert)" = "$DEF0" ] || fail "default cert changed"; ok "default :443 cert unchanged"
 

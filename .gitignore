@@ -6,3 +6,6 @@ verification/*.png
 tests/fixtures/_capture/
 deploy/out/
 verification/*.wav
+audio-demos/
+tools/audio/.cache/
+tools/audio/.venv/

@@ -34,14 +34,14 @@
 | `camera.ts` | 镜头 | `CameraRig` `DirectorContext` | 手动模式用 OrbitControls，加 WASD 和 Q/E。电影模式有 6 种镜头轮换，大事件时切特写（`focusEvent`），另有 `shake()` 和手持感漂移。 |
 | `post.ts` | 后期处理 | `PostFX` | 顺序：RenderPass(4×MSAA, HalfFloat) → UnrealBloom → Finish（移轴、饱和度、色温、暗角）→ OutputPass。用 `setCinematic()` 切换移轴强度。 |
 
-## src/audio：程序化声音（详见 [docs/audio/README.md](../audio/README.md)）
+## src/audio：配乐和音效（详见 [docs/audio/README.md](../audio/README.md)）
 
 | 文件 | 职责 | 关键导出 | 备注 |
 | --- | --- | --- | --- |
-| `mix.ts` | 纯逻辑 | `spatial` `VoiceLimiter` `musicIntensity` `smoothIntensity` `layerGains` `chordForBar` `drumPattern` `bassLine` `midiToHz` | 有单测：`tests/audio.test.ts` |
-| `instruments.ts` | 合成乐器和音效 | `taiko` `snare` `hat` `tom` `bass` `pad` `drone` `brass` `rifle` `cannon` `explosion` `whistle` `flare` `horn` `fanfare` `click` | 参数是 `(ctx, out, t, …)`，同时适用于实时和离线上下文 |
-| `music.ts` | 配乐调度 | `MusicDirector` | 16 分音符步进、0.25s 前瞻；6 个声部各有自己的 GainNode |
-| `engine.ts` | 引擎 | `AudioEngine` `readSoundPref` `renderPreview` | 第一次用户操作时解锁；M 键或按钮开关，选择存在 `localStorage['bb.sound']`；页面隐藏时 suspend |
+| `mix.ts` | 纯逻辑 | `spatial` `VoiceLimiter` `VariantPicker` `musicIntensity` `smoothIntensity` `MusicModeSwitch` `explosionTier` `whistleOffset` `duckFor` | 有单测：`tests/audio.test.ts` |
+| `engine.ts` | 引擎 | `AudioEngine`（`boot` `unlock` `toggle` `setActivity` `frame` `rifle` `cannon` `explosion` `whistle` `flare` `horn` `fanfare` `debugForce`）、`buildGraph` `playBuffer` `duckMusic` `loadBuffers` `readSoundPref` `renderPreview` | 通过 `import.meta.glob` 拿到带哈希的资源 URL；`MusicPlayer` 负责平静和激战的交叉淡变以及胜利段 |
+| `instruments.ts` | UI 点击音（合成） | `click` | — |
+| `assets/` | 预渲染资源 | `manifest.json`、36 个 `.m4a` | 由 `tools/audio/build_assets.py` 生成，不要手改 |
 
 ## src/ui
 

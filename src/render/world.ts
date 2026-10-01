@@ -295,7 +295,7 @@ export class World {
         this.effects.tracer(from, to, this.teamGlow[team]);
         if (this.audio) {
           const e2 = this.ear(from);
-          this.audio.rifle(e2.x, e2.d);
+          this.audio.rifle(team, e2.x, e2.d);
         }
         if (Math.random() < 0.035) this.army.hit(team === 'bulls' ? 'bears' : 'bulls', tx, z, 0.9, 1);
       }

@@ -1,10 +1,16 @@
 /** Pure helpers for the audio system (no Web Audio here, so they can be unit-tested). */
 
-/** Stereo pan and gain for a sound at normalized screen x (-1..1) and camera distance. */
-export function spatial(screenX: number, distance: number, ref = 55): { pan: number; gain: number } {
+/**
+ * Stereo pan, gain and a distance lowpass for a sound at normalized screen x (-1..1) and camera
+ * distance. Far sounds get quieter *and* duller, which reads as distance without vanishing.
+ */
+export function spatial(screenX: number, distance: number): { pan: number; gain: number; cutoff: number } {
   const pan = Math.max(-1, Math.min(1, screenX)) * 0.85;
-  const gain = Math.max(0.05, Math.min(1, ref / (ref + Math.max(0, distance))) ** 1.1);
-  return { pan, gain };
+  const d = Math.max(0, distance);
+  const gain = Math.max(0.12, Math.min(1, 1 / (1 + d / 160)));
+  const far = Math.min(1, d / 260);
+  const cutoff = 16000 * (1 - far) + 2200 * far;
+  return { pan, gain, cutoff };
 }
 
 /**
@@ -30,6 +36,21 @@ export class VoiceLimiter {
   }
 }
 
+/** Random variant index that never repeats the previous pick for the same key. */
+export class VariantPicker {
+  private last = new Map<string, number>();
+  constructor(private readonly rand: () => number = Math.random) {}
+
+  pick(key: string, count: number): number {
+    if (count <= 1) return 0;
+    const prev = this.last.get(key);
+    let i = Math.floor(this.rand() * count);
+    if (i === prev) i = (i + 1 + Math.floor(this.rand() * (count - 1))) % count;
+    this.last.set(key, i);
+    return i;
+  }
+}
+
 export interface IntensityInput {
   /** Taker flow, USD per second (both sides). */
   flowPerSec: number;
@@ -41,7 +62,7 @@ export interface IntensityInput {
   eventsPerMin: number;
 }
 
-/** Target music intensity 0..1 from market activity. */
+/** Target battle intensity 0..1 from market activity. */
 export function musicIntensity(i: IntensityInput): number {
   const flow = Math.min(1, Math.max(0, (Math.log10(1 + i.flowPerSec) - 3) / 3)); // $1K/s → 0, $1M/s → 1
   const edge = Math.min(1, Math.abs(i.progress - 0.5) * 2); // distance from the centre
@@ -57,55 +78,64 @@ export function smoothIntensity(current: number, target: number, dt: number, att
   return current + (target - current) * (1 - Math.exp(-dt / tau));
 }
 
-/** Layer gains for the music at a given intensity. */
-export function layerGains(intensity: number) {
-  const ramp = (from: number, to: number) => Math.max(0, Math.min(1, (intensity - from) / (to - from)));
-  return {
-    pad: 0.55 + 0.45 * ramp(0, 0.6),
-    drone: 1,
-    taiko: ramp(0.2, 0.45),
-    bass: ramp(0.25, 0.5),
-    snare: ramp(0.45, 0.7),
-    brass: ramp(0.7, 0.9),
-  };
+export type MusicMode = 'calm' | 'battle';
+
+/**
+ * Calm (M2) ↔ battle (M1) with hysteresis: intensity must stay ≥ `up` for `holdUp` seconds to go to
+ * battle, and ≤ `down` for `holdDown` seconds to fall back to calm — no flip-flopping.
+ */
+export class MusicModeSwitch {
+  mode: MusicMode = 'calm';
+  private timer = 0;
+  constructor(
+    readonly up = 0.6,
+    readonly down = 0.4,
+    readonly holdUp = 2,
+    readonly holdDown = 12,
+  ) {}
+
+  update(intensity: number, dt: number): MusicMode {
+    if (this.mode === 'calm') {
+      this.timer = intensity >= this.up ? this.timer + dt : 0;
+      if (this.timer >= this.holdUp) {
+        this.mode = 'battle';
+        this.timer = 0;
+      }
+    } else {
+      this.timer = intensity <= this.down ? this.timer + dt : 0;
+      if (this.timer >= this.holdDown) {
+        this.mode = 'calm';
+        this.timer = 0;
+      }
+    }
+    return this.mode;
+  }
 }
 
-/** D minor, i–VI–iv–V: Dm, Bb, Gm, A. MIDI note numbers (root position, mid register). */
-export const PROGRESSION: { name: string; root: number; triad: [number, number, number] }[] = [
-  { name: 'Dm', root: 38, triad: [62, 65, 69] },
-  { name: 'Bb', root: 34, triad: [58, 62, 65] },
-  { name: 'Gm', root: 31, triad: [55, 58, 62] },
-  { name: 'A', root: 33, triad: [57, 61, 64] },
-];
+export type ExplosionTier = 'expl_s' | 'expl_m' | 'expl_l' | 'expl_xl';
 
-export const chordForBar = (bar: number) => PROGRESSION[((bar % PROGRESSION.length) + PROGRESSION.length) % PROGRESSION.length];
-
-export const midiToHz = (m: number) => 440 * 2 ** ((m - 69) / 12);
-
-export type DrumInst = 'taiko' | 'taikoLow' | 'snare' | 'ghost' | 'hat' | 'tom';
-
-/** 16-step drum events for one bar at a given intensity (deterministic per bar). */
-export function drumPattern(bar: number, intensity: number): { step: number; inst: DrumInst; vel: number }[] {
-  const ev: { step: number; inst: DrumInst; vel: number }[] = [];
-  // Taiko: heartbeat on 1 and 3, pickup at higher intensity.
-  ev.push({ step: 0, inst: 'taikoLow', vel: 1 }, { step: 8, inst: 'taiko', vel: 0.8 });
-  if (intensity > 0.55) ev.push({ step: 6, inst: 'taiko', vel: 0.55 }, { step: 14, inst: 'taiko', vel: 0.6 });
-  // Military snare: accents on 2 and 4, ghost-note drags.
-  ev.push({ step: 4, inst: 'snare', vel: 0.9 }, { step: 12, inst: 'snare', vel: 0.9 });
-  for (const s of [2, 3, 10, 11]) ev.push({ step: s, inst: 'ghost', vel: 0.35 });
-  if (intensity > 0.75) for (const s of [13, 14, 15]) ev.push({ step: s, inst: 'ghost', vel: 0.5 + (s - 13) * 0.15 });
-  // Hats: 8ths, 16ths when hot.
-  const hatEvery = intensity > 0.8 ? 1 : 2;
-  for (let s = 0; s < 16; s += hatEvery) ev.push({ step: s, inst: 'hat', vel: s % 4 === 0 ? 0.5 : 0.3 });
-  // Tom fill every 4th bar.
-  if (bar % 4 === 3 && intensity > 0.6) for (const s of [12, 13, 14, 15]) ev.push({ step: s, inst: 'tom', vel: 0.5 + (s - 12) * 0.12 });
-  return ev;
+/** Map the battlefield explosion size (0.5 … 3.6) to a sample tier. */
+export function explosionTier(size: number): ExplosionTier {
+  if (size < 0.9) return 'expl_s';
+  if (size < 1.6) return 'expl_m';
+  if (size < 2.6) return 'expl_l';
+  return 'expl_xl';
 }
 
-/** Bass ostinato: root on 8ths with an octave pop (MIDI notes per 16-step bar). */
-export function bassLine(bar: number): { step: number; note: number; len: number }[] {
-  const r = chordForBar(bar).root;
-  const out: { step: number; note: number; len: number }[] = [];
-  for (let s = 0; s < 16; s += 2) out.push({ step: s, note: s === 6 || s === 14 ? r + 12 : r, len: 1.6 });
-  return out;
+/** Start offset into the whistle sample so its impact lines up with the shell's landing. */
+export function whistleOffset(impactAt: number, flightSeconds: number) {
+  return Math.max(0, Math.min(impactAt - 0.2, impactAt - flightSeconds));
+}
+
+/** Music ducking under big moments: depth (gain multiplier) and how long to hold before recovering. */
+export function duckFor(kind: 'expl_l' | 'expl_xl' | 'liquidation' | 'fanfare'): { depth: number; hold: number; release: number } {
+  switch (kind) {
+    case 'fanfare':
+      return { depth: 0.15, hold: 2.4, release: 0.8 };
+    case 'expl_xl':
+    case 'liquidation':
+      return { depth: 0.35, hold: 0.4, release: 1.8 };
+    default:
+      return { depth: 0.55, hold: 0.25, release: 1.4 };
+  }
 }

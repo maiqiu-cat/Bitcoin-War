@@ -1,52 +1,114 @@
 {
- "at": "2026-10-01T13:06:32.278Z",
- "before": {
-  "state": "locked",
-  "hint": true,
-  "text": "点击画面任意位置，开启战场音效"
- },
- "after": {
+ "at": "2026-10-01T14:23:34.167Z",
+ "autoplay": {
   "state": "running",
   "ctxState": "running",
-  "intensity": 0.438,
+  "loaded": true,
+  "buffers": 36,
+  "music": "calm",
+  "intensity": 0.202,
   "sampleRate": 48000,
   "hint": false
  },
- "run": {
+ "locked": {
+  "state": "locked",
+  "ctxState": "suspended",
+  "loaded": true,
+  "buffers": 36,
+  "music": "idle",
+  "intensity": 0.202,
+  "sampleRate": 48000,
+  "hint": true
+ },
+ "on": {
   "state": "running",
   "ctxState": "running",
-  "intensity": 0.734,
-  "sampleRate": 48000
+  "loaded": true,
+  "buffers": 36,
+  "music": "calm",
+  "intensity": 0.207,
+  "sampleRate": 48000,
+  "hint": false
+ },
+ "battle": {
+  "state": "running",
+  "ctxState": "running",
+  "loaded": true,
+  "buffers": 36,
+  "music": "battle",
+  "intensity": 0.811,
+  "sampleRate": 48000,
+  "hint": false
+ },
+ "vic": {
+  "state": "running",
+  "ctxState": "running",
+  "loaded": true,
+  "buffers": 36,
+  "music": "victory",
+  "intensity": 0.918,
+  "sampleRate": 48000,
+  "hint": false
  },
  "off": {
   "state": "off",
-  "pref": "off",
-  "btn": "off"
+  "pref": "off"
  },
- "on": "running",
+ "back": {
+  "state": "running",
+  "ctxState": "running",
+  "loaded": true,
+  "buffers": 36,
+  "music": "victory",
+  "intensity": 0.908,
+  "sampleRate": 48000,
+  "hint": false
+ },
  "errors": [],
  "levels": {
-  "seconds": 32,
-  "sampleRate": 44100,
-  "peak": 0.875,
-  "rmsDb": -16.1,
+  "seconds": 36,
+  "sampleRate": 48000,
+  "peak": 0.8282,
+  "rmsDb": -17.9,
   "windowsDb": [
-   -14.6,
-   -23.1,
-   -23,
-   -18.7,
-   -18.7,
+   -17.3,
+   -14.1,
+   -15.7,
+   -27.4,
+   -29.1,
+   -33.1,
+   -29,
+   -28.4,
+   -24.2,
+   -24.9,
+   -27.9,
+   -27.3,
+   -16.4,
+   -17.6,
+   -21.3,
+   -24.2,
+   -24.3,
+   -15.7,
    -15.1,
-   -15.4,
-   -15.3,
-   -16.1,
-   -13.6,
-   -14.8,
-   -14.7,
-   -14.5,
-   -14,
-   -19.7,
-   -19.9
-  ]
+   -14.2,
+   -13.2,
+   -15,
+   -16.9,
+   -18.8,
+   -20.9,
+   -18.9,
+   -16.5,
+   -14.4,
+   -16,
+   -18.1,
+   -18.1,
+   -18.5,
+   -18.2,
+   -18.2,
+   -17.8,
+   -18.1
+  ],
+  "bedDb": -27.6,
+  "hitsDb": -11.4
  }
 }

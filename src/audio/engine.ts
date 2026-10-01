@@ -1,52 +1,215 @@
-import * as I from './instruments';
-import { musicIntensity, smoothIntensity, spatial, VoiceLimiter, type IntensityInput } from './mix';
-import { MusicDirector } from './music';
+/**
+ * Battle audio: pre-rendered score (calm M2 ↔ battle M1, victory M3) and layered effect samples,
+ * rendered offline by tools/audio/build_assets.py (MuseScore_General soundfont, MIT).
+ *
+ * Browsers only let audio start after a user gesture. `boot()` runs at page load: it creates the
+ * context, starts loading the assets and tries to resume (succeeds when the browser allows autoplay);
+ * otherwise the first click / key / touch anywhere calls `unlock()`.
+ */
+import manifest from './assets/manifest.json';
+import { click } from './instruments';
+import {
+  duckFor,
+  explosionTier,
+  musicIntensity,
+  MusicModeSwitch,
+  smoothIntensity,
+  spatial,
+  VariantPicker,
+  VoiceLimiter,
+  whistleOffset,
+  type IntensityInput,
+  type MusicMode,
+} from './mix';
 
 export type SoundState = 'off' | 'locked' | 'running';
 
 const STORAGE_KEY = 'bb.sound';
+const URLS = import.meta.glob('./assets/*.m4a', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const urlOf = (file: string) => URLS[`./assets/${file}`];
 
-interface Graph {
+type SfxKey = keyof typeof manifest.sfx;
+type TrackKey = keyof typeof manifest.music;
+
+/* Levels from the approved in-context mix (S6/S7): score bed ≈ -24 dBFS RMS, hits ~12 dB above it. */
+const MUSIC_BUS = 0.5;
+const TRACK_TRIM: Record<TrackKey, number> = { calm: 1, battle: 1, victory: 0.95 };
+const SFX_GAIN: Partial<Record<SfxKey, number>> = {
+  rifle_bull: 0.75,
+  rifle_bear: 0.75,
+  mg_bull: 0.8,
+  mg_bear: 0.8,
+  cannon: 1,
+  expl_s: 0.8,
+  expl_m: 0.9,
+  expl_l: 1,
+  expl_xl: 1,
+  whistle: 0.9,
+  flare: 0.7,
+  horn: 0.85,
+  fanfare_bulls: 0.95,
+  fanfare_bears: 0.95,
+};
+
+export interface Graph {
   master: GainNode;
   music: GainNode;
+  duck: GainNode;
   sfx: GainNode;
-  reverbIn: GainNode;
-  out: I.Out;
-  musicOut: I.Out;
 }
 
-/** master ← compressor; music bus, sfx bus, shared hall reverb. */
-function buildGraph(ctx: BaseAudioContext): Graph {
+export function buildGraph(ctx: BaseAudioContext): Graph {
   const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -16;
-  comp.knee.value = 12;
-  comp.ratio.value = 4;
-  comp.attack.value = 0.003;
-  comp.release.value = 0.25;
+  comp.threshold.value = -10;
+  comp.knee.value = 8;
+  comp.ratio.value = 6;
+  comp.attack.value = 0.002;
+  comp.release.value = 0.2;
   comp.connect(ctx.destination);
-  // Remove inaudible sub-rumble (< 28 Hz) that only eats headroom on laptop speakers.
   const hp = ctx.createBiquadFilter();
   hp.type = 'highpass';
   hp.frequency.value = 28;
-  hp.Q.value = 0.6;
   hp.connect(comp);
   const master = ctx.createGain();
-  master.gain.value = 0.85;
+  master.gain.value = 0.9;
   master.connect(hp);
-  const reverb = ctx.createConvolver();
-  reverb.buffer = I.impulseResponse(ctx);
-  const reverbIn = ctx.createGain();
-  reverbIn.gain.value = 1;
-  const reverbOut = ctx.createGain();
-  reverbOut.gain.value = 0.32;
-  reverbIn.connect(reverb).connect(reverbOut).connect(master);
+  const duck = ctx.createGain();
+  duck.connect(master);
   const music = ctx.createGain();
-  music.gain.value = 0.42;
-  music.connect(master);
+  music.gain.value = MUSIC_BUS;
+  music.connect(duck);
   const sfx = ctx.createGain();
-  sfx.gain.value = 0.9;
+  sfx.gain.value = 1;
   sfx.connect(master);
-  return { master, music, sfx, reverbIn, out: { dest: sfx, send: reverbIn }, musicOut: { dest: music, send: reverbIn } };
+  return { master, music, duck, sfx };
+}
+
+export interface SampleOpts {
+  pan?: number;
+  gain?: number;
+  cutoff?: number;
+  offset?: number;
+  rate?: number;
+}
+
+/** Play one buffer through optional lowpass → gain → panner into `out`, starting at context time `at`. */
+export function playBuffer(ctx: BaseAudioContext, out: AudioNode, buf: AudioBuffer, at: number, o: SampleOpts = {}) {
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = o.rate ?? 1;
+  let node: AudioNode = src;
+  if (o.cutoff && o.cutoff < 15000) {
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = o.cutoff;
+    node.connect(lp);
+    node = lp;
+  }
+  const g = ctx.createGain();
+  g.gain.value = o.gain ?? 1;
+  const p = ctx.createStereoPanner();
+  p.pan.value = o.pan ?? 0;
+  node.connect(g).connect(p).connect(out);
+  src.start(at, o.offset ?? 0);
+  return src;
+}
+
+/** Duck the music bus: drop to `depth`, hold, then recover. */
+export function duckMusic(duck: GainNode, at: number, kind: Parameters<typeof duckFor>[0]) {
+  const { depth, hold, release } = duckFor(kind);
+  duck.gain.cancelScheduledValues(at);
+  duck.gain.setValueAtTime(duck.gain.value, at);
+  duck.gain.linearRampToValueAtTime(depth, at + 0.06);
+  duck.gain.setValueAtTime(depth, at + hold);
+  duck.gain.linearRampToValueAtTime(1, at + hold + release);
+}
+
+/** Loads every asset in the manifest into AudioBuffers. */
+export async function loadBuffers(ctx: BaseAudioContext): Promise<Map<string, AudioBuffer>> {
+  const files = new Set<string>();
+  for (const m of Object.values(manifest.music)) files.add(m.file);
+  for (const list of Object.values(manifest.sfx)) for (const s of list) files.add(s.file);
+  const out = new Map<string, AudioBuffer>();
+  await Promise.all(
+    [...files].map(async (file) => {
+      const res = await fetch(urlOf(file));
+      out.set(file, await ctx.decodeAudioData(await res.arrayBuffer()));
+    }),
+  );
+  return out;
+}
+
+/** Calm ↔ battle crossfades (each entry restarts the track from its intro) and the victory cue. */
+class MusicPlayer {
+  mode: MusicMode | 'victory' | 'idle' = 'idle';
+  private cur: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+  private resumeTimer?: ReturnType<typeof setTimeout>;
+
+  constructor(
+    private readonly ctx: BaseAudioContext,
+    private readonly out: AudioNode,
+    private readonly bufs: Map<string, AudioBuffer>,
+  ) {}
+
+  private startTrack(key: TrackKey, at: number, fadeIn: number) {
+    const meta = manifest.music[key];
+    const buf = this.bufs.get(meta.file);
+    if (!buf) return null;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    if ('loopStart' in meta) {
+      src.loop = true;
+      src.loopStart = meta.loopStart;
+      src.loopEnd = meta.loopStart + meta.loopLength;
+    }
+    const gain = this.ctx.createGain();
+    const trim = TRACK_TRIM[key];
+    gain.gain.setValueAtTime(fadeIn > 0 ? 0.0001 : trim, at);
+    if (fadeIn > 0) gain.gain.linearRampToValueAtTime(trim, at + fadeIn);
+    src.connect(gain).connect(this.out);
+    src.start(at);
+    return { src, gain };
+  }
+
+  private fadeOut(at: number, seconds: number) {
+    const c = this.cur;
+    if (!c) return;
+    c.gain.gain.cancelScheduledValues(at);
+    c.gain.gain.setValueAtTime(c.gain.gain.value, at);
+    c.gain.gain.linearRampToValueAtTime(0.0001, at + seconds);
+    c.src.stop(at + seconds + 0.05);
+    this.cur = null;
+  }
+
+  setMode(mode: MusicMode, at = this.ctx.currentTime) {
+    if (this.mode === mode || this.mode === 'victory') return;
+    this.fadeOut(at, this.mode === 'idle' ? 0 : 3);
+    this.cur = this.startTrack(mode, at, this.mode === 'idle' ? 1.5 : 2.5);
+    this.mode = mode;
+  }
+
+  /** Victory: fade the score, play M3 after the fanfare, then return to `next()`'s mode. */
+  victory(at: number, next: () => MusicMode) {
+    this.fadeOut(at, 0.8);
+    clearTimeout(this.resumeTimer);
+    this.mode = 'victory';
+    const cueAt = at + 2.6;
+    this.cur = this.startTrack('victory', cueAt, 0.4);
+    const len = manifest.music.victory.seconds;
+    if (typeof window !== 'undefined' && this.ctx instanceof AudioContext) {
+      this.resumeTimer = setTimeout(() => {
+        this.mode = 'idle';
+        this.cur = null;
+        this.setMode(next());
+      }, (cueAt - this.ctx.currentTime + len - 1.5) * 1000);
+    }
+  }
+
+  stop() {
+    clearTimeout(this.resumeTimer);
+    this.fadeOut(this.ctx.currentTime, 0.3);
+    this.mode = 'idle';
+  }
 }
 
 export function readSoundPref(search = globalThis.location?.search ?? ''): boolean {
@@ -60,21 +223,23 @@ export function readSoundPref(search = globalThis.location?.search ?? ''): boole
   }
 }
 
-/**
- * Battle audio: adaptive music + positional effects. Browsers only allow audio after a user
- * gesture, so the context is created/resumed in `unlock()` (wired to the first click/key).
- */
 export class AudioEngine {
   enabled: boolean;
   onState?: (s: SoundState) => void;
   private ctx: AudioContext | null = null;
   private g: Graph | null = null;
-  private music: MusicDirector | null = null;
-  private timer?: ReturnType<typeof setInterval>;
+  private bufs = new Map<string, AudioBuffer>();
+  private loaded = false;
+  private music: MusicPlayer | null = null;
+  private modeSwitch = new MusicModeSwitch();
   private intensity = 0.2;
   private target = 0.2;
+  private forced: number | null = null;
+  private picker = new VariantPicker();
+  private lastMg = 0;
   private limiter = new VoiceLimiter({
-    rifle: { max: 9, windowMs: 1000 },
+    rifle: { max: 10, windowMs: 1000 },
+    mg: { max: 1, windowMs: 1500 },
     cannon: { max: 4, windowMs: 1000 },
     explosion: { max: 6, windowMs: 1000 },
     whistle: { max: 3, windowMs: 1000 },
@@ -92,25 +257,54 @@ export class AudioEngine {
   }
 
   get debug() {
-    return { state: this.state, ctxState: this.ctx?.state ?? 'none', intensity: +this.intensity.toFixed(3), sampleRate: this.ctx?.sampleRate };
+    return {
+      state: this.state,
+      ctxState: this.ctx?.state ?? 'none',
+      loaded: this.loaded,
+      buffers: this.bufs.size,
+      music: this.music?.mode ?? 'none',
+      intensity: +this.intensity.toFixed(3),
+      sampleRate: this.ctx?.sampleRate,
+    };
+  }
+
+  /** Page load: create the context, preload assets, and try to start (works when autoplay is allowed). */
+  boot() {
+    if (!this.enabled || this.ctx) return;
+    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+    this.ctx = new Ctor({ latencyHint: 'interactive' });
+    this.g = buildGraph(this.ctx);
+    this.music = new MusicPlayer(this.ctx, this.g.music, this.bufs);
+    this.ctx.onstatechange = () => {
+      this.startMusicIfReady();
+      this.emit();
+    };
+    loadBuffers(this.ctx)
+      .then((m) => {
+        m.forEach((v, k) => this.bufs.set(k, v));
+        this.loaded = true;
+        this.startMusicIfReady();
+        this.emit();
+      })
+      .catch((e) => console.warn('[audio] asset load failed', e));
+    this.tryResume();
+    this.emit();
   }
 
   /** Call from a user gesture (click / key / touch). Safe to call repeatedly. */
   unlock() {
     if (!this.enabled) return;
-    if (!this.ctx) {
-      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!Ctor) return;
-      this.ctx = new Ctor({ latencyHint: 'interactive' });
-      this.g = buildGraph(this.ctx);
-      this.music = new MusicDirector(this.ctx, this.g.musicOut);
-      this.music.start(this.ctx.currentTime + 0.15);
-      this.music.setIntensity(this.intensity, this.ctx.currentTime);
-      this.ctx.onstatechange = () => this.emit();
-      this.timer = setInterval(() => this.pump(), 50);
-    }
-    if (this.ctx.state !== 'running' && !document.hidden) this.ctx.resume().then(() => this.emit(), () => this.emit());
-    this.emit();
+    if (!this.ctx) this.boot();
+    this.tryResume();
+  }
+
+  private tryResume() {
+    if (this.ctx && this.ctx.state !== 'running' && !document.hidden) this.ctx.resume().then(() => this.emit(), () => this.emit());
+  }
+
+  private startMusicIfReady() {
+    if (this.loaded && this.ctx?.state === 'running' && this.music && this.music.mode === 'idle') this.music.setMode(this.modeSwitch.mode);
   }
 
   setEnabled(on: boolean) {
@@ -127,24 +321,89 @@ export class AudioEngine {
 
   toggle() {
     this.setEnabled(!this.enabled);
-    if (this.enabled) this.play((ctx, out, t) => I.click(ctx, out, t));
+    if (this.enabled && this.ctx && this.g && this.ctx.state === 'running') click(this.ctx, { dest: this.g.sfx }, this.ctx.currentTime + 0.01);
   }
 
-  /** Market activity → music intensity target (called from the logic tick). */
+  /** Market activity → battle intensity (called from the logic tick). */
   setActivity(input: IntensityInput) {
     this.target = musicIntensity(input);
   }
 
-  /** Per-frame smoothing of the music intensity. */
+  /** Verification only: pin the intensity (null releases it). */
+  debugForce(v: number | null) {
+    this.forced = v;
+  }
+
+  /** Per-frame: smooth the intensity and drive calm ↔ battle. */
   frame(dt: number) {
-    const next = smoothIntensity(this.intensity, this.target, dt);
-    if (Math.abs(next - this.intensity) > 0.002 && this.ctx && this.music) this.music.setIntensity(next, this.ctx.currentTime);
-    this.intensity = next;
+    this.intensity = smoothIntensity(this.intensity, this.forced ?? this.target, dt);
+    const mode = this.modeSwitch.update(this.intensity, dt);
+    if (this.state === 'running' && this.loaded && this.music && this.music.mode !== 'victory' && this.music.mode !== 'idle') this.music.setMode(mode);
+  }
+
+  /* --------------------------------------------------------------- effects */
+
+  private sample(key: SfxKey, category: string | null, o: SampleOpts & { duck?: Parameters<typeof duckFor>[0] } = {}) {
+    if (this.state !== 'running' || !this.ctx || !this.g) return;
+    if (category && !this.limiter.allow(category, performance.now())) return;
+    const list = manifest.sfx[key];
+    const buf = this.bufs.get(list[this.picker.pick(key, list.length)].file);
+    if (!buf) return;
+    const at = this.ctx.currentTime + 0.005;
+    playBuffer(this.ctx, this.g.sfx, buf, at, {
+      ...o,
+      gain: (o.gain ?? 1) * (SFX_GAIN[key] ?? 1),
+      rate: o.rate ?? 1 + (Math.random() - 0.5) * 0.06,
+    });
+    if (o.duck) duckMusic(this.g.duck, at, o.duck);
+  }
+
+  rifle(team: 'bulls' | 'bears', screenX: number, dist: number) {
+    const s = spatial(screenX, dist);
+    const now = performance.now();
+    // Hot markets: now and then a machine-gun burst instead of a single shot.
+    if (this.intensity > 0.55 && Math.random() < 0.08 && now - this.lastMg > 1500) {
+      this.lastMg = now;
+      this.sample(team === 'bulls' ? 'mg_bull' : 'mg_bear', 'mg', { ...s, gain: s.gain });
+      return;
+    }
+    this.sample(team === 'bulls' ? 'rifle_bull' : 'rifle_bear', 'rifle', s);
+  }
+
+  cannon(screenX: number, dist: number, size: number) {
+    const s = spatial(screenX, dist);
+    this.sample('cannon', 'cannon', { ...s, gain: s.gain * (0.75 + 0.25 * Math.min(1, size / 2.5)) });
+  }
+
+  explosion(screenX: number, dist: number, size: number) {
+    const s = spatial(screenX, dist);
+    const tier = explosionTier(size);
+    this.sample(tier, 'explosion', { ...s, duck: tier === 'expl_l' || tier === 'expl_xl' ? tier : undefined });
+  }
+
+  /** Incoming liquidation shell: the whistle is offset so its impact lines up with the landing. */
+  whistle(screenX: number, dist: number, flightSeconds: number) {
+    const s = spatial(screenX, dist * 0.6);
+    const impactAt = manifest.sfx.whistle[0].impactAt;
+    this.sample('whistle', 'whistle', { ...s, offset: whistleOffset(impactAt, flightSeconds), rate: 1 });
+  }
+
+  flare(screenX: number, dist: number) {
+    this.sample('flare', 'flare', spatial(screenX, dist));
+  }
+
+  horn() {
+    this.sample('horn', null, { rate: 1 });
+  }
+
+  fanfare(team: 'bulls' | 'bears') {
+    if (this.state !== 'running' || !this.ctx || !this.music) return;
+    this.sample(team === 'bulls' ? 'fanfare_bulls' : 'fanfare_bears', null, { rate: 1 });
+    this.music.victory(this.ctx.currentTime, () => this.modeSwitch.mode);
   }
 
   /** Stop scheduling and release the audio device. */
   dispose() {
-    if (this.timer) clearInterval(this.timer);
     this.music?.stop();
     this.ctx?.close();
     this.ctx = null;
@@ -153,73 +412,10 @@ export class AudioEngine {
     this.emit();
   }
 
-  /* --------------------------------------------------------------- effects */
-
-  rifle(screenX: number, dist: number) {
-    if (!this.ready('rifle')) return;
-    const { pan, gain } = spatial(screenX, dist);
-    this.play((ctx, out, t) => I.rifle(ctx, out, t, pan, gain), Math.random() * 0.03);
-  }
-
-  cannon(screenX: number, dist: number, size: number) {
-    if (!this.ready('cannon')) return;
-    const { pan, gain } = spatial(screenX, dist);
-    this.play((ctx, out, t) => I.cannon(ctx, out, t, pan, gain, size));
-  }
-
-  explosion(screenX: number, dist: number, size: number) {
-    if (!this.ready('explosion')) return;
-    const { pan, gain } = spatial(screenX, dist, 70);
-    this.play((ctx, out, t) => I.explosion(ctx, out, t, pan, gain, size));
-  }
-
-  whistle(screenX: number, dist: number, dur: number) {
-    if (!this.ready('whistle')) return;
-    const { pan, gain } = spatial(screenX, dist, 80);
-    this.play((ctx, out, t) => I.whistle(ctx, out, t, pan, gain, dur));
-  }
-
-  flare(screenX: number, dist: number) {
-    if (!this.ready('flare')) return;
-    const { pan, gain } = spatial(screenX, dist, 70);
-    this.play((ctx, out, t) => I.flare(ctx, out, t, pan, gain));
-  }
-
-  horn() {
-    if (this.state !== 'running') return;
-    this.play((ctx, out, t) => I.horn(ctx, out, t));
-  }
-
-  fanfare(team: 'bulls' | 'bears') {
-    if (this.state !== 'running' || !this.ctx || !this.g) return;
-    // duck the score so the fanfare reads clearly
-    const t = this.ctx.currentTime;
-    const m = this.g.music.gain;
-    m.cancelScheduledValues(t);
-    m.setTargetAtTime(0.12, t, 0.15);
-    m.setTargetAtTime(0.42, t + 2.6, 0.8);
-    this.play((ctx, out, tt) => I.fanfare(ctx, out, tt, team));
-  }
-
-  /* -------------------------------------------------------------- internal */
-
-  private ready(category: string) {
-    return this.state === 'running' && this.limiter.allow(category, performance.now());
-  }
-
-  private play(fn: (ctx: BaseAudioContext, out: I.Out, t: number) => void, delay = 0) {
-    if (!this.ctx || !this.g || this.ctx.state !== 'running') return;
-    fn(this.ctx, this.g.out, this.ctx.currentTime + 0.01 + delay);
-  }
-
-  private pump() {
-    if (this.ctx && this.music && this.ctx.state === 'running') this.music.schedule(this.ctx.currentTime + 0.25);
-  }
-
   private onVisibility() {
     if (!this.ctx) return;
     if (document.hidden) this.ctx.suspend().then(() => this.emit(), () => this.emit());
-    else if (this.enabled) this.ctx.resume().then(() => this.emit(), () => this.emit());
+    else if (this.enabled) this.tryResume();
   }
 
   private emit() {
@@ -234,43 +430,73 @@ export interface PreviewResult {
   sampleRate: number;
   peak: number;
   rmsDb: number;
-  /** RMS (dBFS) per 2-second window, to show the music building up. */
+  /** RMS (dBFS) per 1-second window. */
   windowsDb: number[];
+  /** Music-only RMS in the battle section vs. loudest effect windows (proves effects stand out). */
+  bedDb: number;
+  hitsDb: number;
   wavBase64: string;
 }
 
 /**
- * Render a deterministic-length demo (score rising from calm to storming, plus every effect)
- * with an OfflineAudioContext, measure levels and return a 16-bit WAV.
+ * Render a scripted 36 s scene with the real assets and engine routing: calm score → crossfade to
+ * battle → rifle fire, cannons, explosions, a liquidation strike → victory fanfare + M3.
  */
-export async function renderPreview(seconds = 32, sampleRate = 44100): Promise<PreviewResult> {
+export async function renderPreview(seconds = 36, sampleRate = 48000): Promise<PreviewResult> {
   const ctx = new OfflineAudioContext(2, Math.floor(seconds * sampleRate), sampleRate);
   const g = buildGraph(ctx);
-  const music = new MusicDirector(ctx, g.musicOut);
-  music.start(0.05);
-  // intensity curve: calm → active → storming → calm
-  const curve = (t: number) => (t < 8 ? 0.2 : t < 16 ? 0.5 : t < 24 ? 0.9 : 0.35);
-  for (let t = 0; t < seconds; t += 0.5) {
-    music.setIntensity(curve(t), t);
-    music.schedule(t + 0.5);
+  const bufs = await loadBuffers(ctx);
+  const pick = new VariantPicker(mulberry(5));
+  const rnd = mulberry(9);
+  const B = (key: SfxKey) => bufs.get(manifest.sfx[key][pick.pick(key, manifest.sfx[key].length)].file)!;
+  const track = (key: TrackKey, at: number, fadeIn: number, fadeOutAt?: number) => {
+    const meta = manifest.music[key];
+    const src = ctx.createBufferSource();
+    src.buffer = bufs.get(meta.file)!;
+    if ('loopStart' in meta) {
+      src.loop = true;
+      src.loopStart = meta.loopStart;
+      src.loopEnd = meta.loopStart + meta.loopLength;
+    }
+    const gn = ctx.createGain();
+    gn.gain.setValueAtTime(0.0001, at);
+    gn.gain.linearRampToValueAtTime(TRACK_TRIM[key], at + fadeIn);
+    src.connect(gn).connect(g.music);
+    src.start(at);
+    if (fadeOutAt !== undefined) {
+      gn.gain.setValueAtTime(TRACK_TRIM[key], fadeOutAt);
+      gn.gain.linearRampToValueAtTime(0.0001, fadeOutAt + 3);
+      src.stop(fadeOutAt + 3.1);
+    }
+  };
+  track('calm', 0, 1.5, 9);
+  track('battle', 9, 2.5, 25.2);
+  track('victory', 27.6, 0.4);
+  const fx = (key: SfxKey, at: number, pan: number, dist: number, extra: SampleOpts = {}) => {
+    const s = spatial(pan, dist);
+    playBuffer(ctx, g.sfx, B(key), at, { ...s, ...extra, gain: (extra.gain ?? s.gain) * (SFX_GAIN[key] ?? 1) });
+  };
+  fx('horn', 0.3, 0, 0, { gain: 1 });
+  for (let t = 3; t < 24; t += 0.25 + rnd() * 0.5) fx(rnd() < 0.5 ? 'rifle_bull' : 'rifle_bear', t, rnd() * 1.6 - 0.8, 40 + rnd() * 160);
+  fx('mg_bear', 14.2, 0.4, 70);
+  for (const [t, size] of [[12, 1.8], [17, 2.4], [21.5, 1.2]] as const) {
+    fx('cannon', t, rnd() - 0.5, 60);
+    fx(explosionTier(size), t + 0.9, rnd() - 0.5, 60);
+    if (size >= 1.6) duckMusic(g.duck, t + 0.9, explosionTier(size) as 'expl_l' | 'expl_xl');
   }
-  const out = g.out;
-  I.horn(ctx, out, 0.3);
-  for (let i = 0; i < 40; i++) I.rifle(ctx, out, 2 + Math.random() * 26, (Math.random() - 0.5) * 1.4, 0.3 + Math.random() * 0.6);
-  I.cannon(ctx, out, 6, -0.4, 0.9, 1.5);
-  I.explosion(ctx, out, 7.1, 0.3, 0.9, 1.4);
-  I.whistle(ctx, out, 10, 0.5, 0.8, 1.6);
-  I.explosion(ctx, out, 11.6, 0.5, 1, 3.4);
-  I.flare(ctx, out, 14, -0.6, 0.8);
-  for (const [t, p, s] of [[18, -0.3, 2], [18.6, 0.4, 1], [19.5, 0, 2.8], [21, -0.5, 1.2]] as const) I.explosion(ctx, out, t, p, 0.9, s);
-  I.fanfare(ctx, out, 25, 'bulls');
+  fx('whistle', 18.4, 0.2, 40, { offset: whistleOffset(1.8, 1.6) });
+  fx('expl_xl', 20, 0.2, 40, { gain: 1 });
+  duckMusic(g.duck, 20, 'liquidation');
+  fx('flare', 23, -0.5, 90);
+  fx('fanfare_bulls', 25, 0, 0, { gain: 1 });
+  duckMusic(g.duck, 25, 'fanfare');
   const buf = await ctx.startRendering();
 
   const L = buf.getChannelData(0);
   const R = buf.getChannelData(1);
   let peak = 0;
   let sum = 0;
-  const win = 2 * sampleRate;
+  const win = sampleRate;
   const windowsDb: number[] = [];
   let wsum = 0;
   for (let i = 0; i < L.length; i++) {
@@ -284,13 +510,38 @@ export async function renderPreview(seconds = 32, sampleRate = 44100): Promise<P
       wsum = 0;
     }
   }
+  const short = (from: number, to: number) => {
+    // loudest 50 ms window in [from, to)
+    let best = -120;
+    const w = Math.floor(0.05 * sampleRate);
+    for (let s = Math.floor(from * sampleRate); s + w < to * sampleRate; s += w) {
+      let e = 0;
+      for (let i = s; i < s + w; i++) e += (L[i] * L[i] + R[i] * R[i]) / 2;
+      best = Math.max(best, 10 * Math.log10(e / w + 1e-12));
+    }
+    return best;
+  };
+  const bedDb = windowsDb.slice(10, 12).reduce((a, b) => a + b, 0) / 2; // 10–12 s: battle score + light rifle fire
   return {
     seconds,
     sampleRate,
     peak: +peak.toFixed(4),
     rmsDb: +(10 * Math.log10(sum / L.length + 1e-12)).toFixed(1),
     windowsDb,
+    bedDb: +bedDb.toFixed(1),
+    hitsDb: +short(12, 22).toFixed(1),
     wavBase64: toWavBase64(L, R, sampleRate),
+  };
+}
+
+function mulberry(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 

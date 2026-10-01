@@ -39,6 +39,9 @@ const battle = new BattleEngine({ halfRange });
 // Browsers only start audio after a user gesture; the first click/key/touch unlocks it.
 const audio = new AudioEngine();
 world.audio = audio;
+// Default on: start loading and try to play right away; browsers that block autoplay
+// will start on the first click / key / touch anywhere.
+audio.boot();
 for (const ev of ['pointerdown', 'keydown', 'touchstart'] as const) window.addEventListener(ev, () => audio.unlock(), { passive: true });
 
 let lightingChoice: LightingName | 'auto' = (params.get('light') as LightingName) ?? 'auto';

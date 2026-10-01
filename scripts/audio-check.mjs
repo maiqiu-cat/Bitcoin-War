@@ -3,11 +3,11 @@
  *
  *   pnpm build && pnpm verify:audio
  *
- * 1. With the normal autoplay policy the page must show the "click to enable sound" hint (state locked).
- * 2. A click unlocks audio (state running, hint hidden); a synthetic liquidation exercises the effects path.
- * 3. M toggles sound off (persisted) and on again.
- * 4. renderPreview(): 32 s offline render (score calm → storming + every effect) → verification/audio-preview.wav,
- *    asserting it is audible, not clipping, and that the score gets louder as intensity rises.
+ * A. Autoplay allowed (Chrome flag): sound starts with no click (default on), calm score playing.
+ * B. Normal autoplay policy: "click to enable sound" hint while locked; a click starts it.
+ *    Forced high intensity → battle score; a win → victory cue; effects path; M toggles and persists.
+ * C. renderPreview(): 36 s offline scene with the real assets (calm → battle → hits → liquidation →
+ *    victory) → verification/audio-preview.wav; no clipping, hits clearly above the score bed.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -21,61 +21,89 @@ await new Promise((res, rej) => {
   const t = setTimeout(() => rej(new Error('preview server did not start')), 20000);
   server.stdout.on('data', (d) => String(d).includes(String(PORT)) && (clearTimeout(t), res()));
 });
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--ignore-gpu-blocklist'] });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fails = [];
 const check = (ok, msg) => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`);
   if (!ok) fails.push(msg);
 };
+const report = {};
+const URL = `http://localhost:${PORT}/?sim&lang=zh`;
+const dbg = (page) => page.evaluate(() => ({ ...__bb.audio.debug, hint: document.querySelector('[data-k=soundHint]').classList.contains('show') }));
+const waitFor = async (page, fn, ms) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    const d = await dbg(page);
+    if (fn(d)) return d;
+    await sleep(250);
+  }
+  return dbg(page);
+};
+
 try {
+  // ---------------------------------------------------------------- A: autoplay allowed
+  {
+    const b = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+    const page = await b.newPage();
+    await page.setViewport({ width: 1440, height: 860 });
+    await page.goto(URL, { waitUntil: 'domcontentloaded' });
+    const d = await waitFor(page, (x) => x.loaded && x.music === 'calm', 15000);
+    report.autoplay = d;
+    check(d.state === 'running' && d.loaded && d.music === 'calm' && !d.hint, `A. autoplay allowed, no click: state=${d.state}, assets=${d.buffers}, music=${d.music}, hint=${d.hint}`);
+    await b.close();
+  }
+  // ---------------------------------------------------------------- B: normal policy
+  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--ignore-gpu-blocklist'] });
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 860 });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !/binance/i.test(m.text()) && errors.push(m.text()));
-  await page.goto(`http://localhost:${PORT}/?sim&lang=zh`, { waitUntil: 'domcontentloaded' });
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.removeItem('bb.sound'));
-  await sleep(3000);
-  const before = await page.evaluate(() => ({ state: __bb.audio.state, hint: document.querySelector('[data-k=soundHint]').classList.contains('show'), text: document.querySelector('[data-k=soundHint]').textContent }));
-  check(before.state === 'locked' && before.hint, `before any gesture: state=${before.state}, hint shown=${before.hint} ("${before.text.trim()}")`);
+  const locked = await waitFor(page, (x) => x.loaded, 15000);
+  check(locked.state === 'locked' && locked.hint && locked.loaded, `B1. default policy before a gesture: state=${locked.state}, hint=${locked.hint}, assets preloaded=${locked.loaded} (${locked.buffers})`);
   await page.mouse.click(720, 430);
-  await sleep(1500);
-  const after = await page.evaluate(() => ({ ...__bb.audio.debug, hint: document.querySelector('[data-k=soundHint]').classList.contains('show') }));
-  check(after.state === 'running' && !after.hint, `after a click: state=${after.state}, ctx=${after.ctxState}, hint shown=${after.hint}`);
+  const on = await waitFor(page, (x) => x.state === 'running' && x.music === 'calm', 5000);
+  check(on.state === 'running' && on.music === 'calm' && !on.hint, `B2. after one click: state=${on.state}, music=${on.music}, hint=${on.hint}`);
+  await page.evaluate(() => __bb.audio.debugForce(1));
+  const battle = await waitFor(page, (x) => x.music === 'battle', 12000);
+  check(battle.music === 'battle', `B3. sustained high intensity → music=${battle.music} (intensity ${battle.intensity})`);
   await page.evaluate(() => {
     const now = Date.now();
     __bb.world.onMarketEvent({ id: 1, kind: 'liq', type: 'liqShort', ex: 'sim', bull: true, usd: 2_500_000, price: 84000, ts: now, label: 'Shorts liquidated' });
     __bb.world.onMarketEvent({ id: 2, kind: 'trade', type: 'bigSell', ex: 'sim', bull: false, usd: 900_000, price: 84000, ts: now, label: 'Large sell trade' });
     __bb.world.onMarketEvent({ id: 3, kind: 'option', type: 'optBuy', ex: 'deribit', bull: true, usd: 50_000, price: 84000, ts: now, label: 'Large option buy' });
   });
-  await sleep(6000);
-  const run = await page.evaluate(() => __bb.audio.debug);
-  check(run.state === 'running', `running after effects + 6 s of music: intensity=${run.intensity}, sampleRate=${run.sampleRate}`);
+  await sleep(2500);
+  await page.evaluate(() => __bb.world.celebrate('bulls'));
+  const vic = await waitFor(page, (x) => x.music === 'victory', 3000);
+  check(vic.music === 'victory', `B4. win → music=${vic.music}`);
+  await page.evaluate(() => __bb.audio.debugForce(null));
   await page.keyboard.press('m');
   await sleep(300);
-  const off = await page.evaluate(() => ({ state: __bb.audio.state, pref: localStorage.getItem('bb.sound'), btn: document.querySelector('[data-k=sound]').dataset.state }));
-  check(off.state === 'off' && off.pref === 'off' && off.btn === 'off', `M → off (pref=${off.pref}, button=${off.btn})`);
+  const off = await page.evaluate(() => ({ state: __bb.audio.state, pref: localStorage.getItem('bb.sound') }));
+  check(off.state === 'off' && off.pref === 'off', `B5. M → off (pref=${off.pref})`);
   await page.keyboard.press('m');
-  await sleep(800);
-  const on = await page.evaluate(() => __bb.audio.state);
-  check(on === 'running', `M again → ${on}`);
-  check(errors.length === 0, `no runtime errors (${errors.length}) ${errors.slice(0, 3).join(' | ')}`);
+  const back = await waitFor(page, (x) => x.state === 'running', 3000);
+  check(back.state === 'running', `B6. M again → ${back.state}`);
+  check(errors.length === 0, `B7. no runtime errors (${errors.length}) ${errors.slice(0, 3).join(' | ')}`);
+  Object.assign(report, { locked, on, battle, vic, off, back, errors });
 
+  // ---------------------------------------------------------------- C: offline render
   const t0 = Date.now();
-  const res = await page.evaluate(async () => __bb.renderPreview(32));
+  const res = await page.evaluate(async () => __bb.renderPreview(36));
   writeFileSync('verification/audio-preview.wav', Buffer.from(res.wavBase64, 'base64'));
   const { wavBase64, ...levels } = res;
+  report.levels = levels;
   console.log(`preview rendered in ${((Date.now() - t0) / 1000).toFixed(1)} s:`, JSON.stringify(levels));
-  check(levels.peak > 0.2 && levels.peak < 0.995, `preview peak ${levels.peak} (audible, no clipping)`);
-  check(levels.rmsDb > -32 && levels.rmsDb < -8, `preview RMS ${levels.rmsDb} dBFS`);
+  check(levels.peak > 0.3 && levels.peak < 0.995, `C1. peak ${levels.peak} (audible, no clipping)`);
+  check(levels.hitsDb - levels.bedDb >= 8, `C2. hits stand out: loudest hit ${levels.hitsDb} dB vs score bed ${levels.bedDb} dB (+${(levels.hitsDb - levels.bedDb).toFixed(1)} dB)`);
   const w = levels.windowsDb;
-  const calm = (w[1] + w[2]) / 2; // 2–6 s: intensity 0.2, few effects
-  const storm = (w[9] + w[10] + w[11]) / 3; // 18–24 s: intensity 0.9 + explosions
-  check(storm > calm + 3, `score builds up: calm ${calm.toFixed(1)} dB → storming ${storm.toFixed(1)} dB`);
-  writeFileSync('verification/audio-report.json', JSON.stringify({ at: new Date().toISOString(), before, after, run, off, on, errors, levels }, null, 1));
-} finally {
+  check(Math.min(...w.slice(1, 8)) > -45 && Math.min(...w.slice(28, 34)) > -45, `C3. calm score (1–8 s) and victory cue (28–34 s) audible: min ${Math.min(...w.slice(1, 8))} / ${Math.min(...w.slice(28, 34))} dB`);
+  writeFileSync('verification/audio-report.json', JSON.stringify({ at: new Date().toISOString(), ...report }, null, 1));
   await browser.close();
+} finally {
   server.kill();
 }
 console.log(fails.length ? `\n${fails.length} check(s) failed` : '\nAUDIO CHECKS PASSED → verification/audio-preview.wav');

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Upload a kit to the server over SSH and run an install.sh command there.
 #
-#   deploy/push.sh [archive] [command]      # command: preflight (default) | deploy | cert | status | rollback
+#   deploy/push.sh [archive] [command]      # command: preflight (default) | deploy | cert | status | audit | rollback
 #   deploy/push.sh deploy/out/battle-20261001-1830-abc1234.tar.gz deploy
 #
 # Requires `ssh $DEPLOY_HOST` to work (see docs/handoff/deploy.md).

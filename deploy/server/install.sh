@@ -15,6 +15,8 @@
 #               byte-identical to the baseline, compare every other site, delete our files
 #               and (unless KEEP_CERT=1) our certificate
 #   status      show releases, config, certificate and HTTP checks
+#   audit       read-only post-release check against the baseline: nginx files (only our config may
+#               differ), every other site's HTTP/HTTPS codes + default certificate, listeners, containers
 #
 # Safety rules (shared server: other projects' sites live here)
 #   * only touches /var/www/battle.ondream.ai, /var/www/battle-acme,
@@ -185,6 +187,14 @@ write_nginx() {
   [ -f "$tmpl" ] || die "missing template $tmpl"
   [ "$tmpl" = "$KIT/nginx/battle.https.conf" ] && check_https_sockets
   install -d -m 700 "$STATE"
+  # Content-only release: our file already equals this template. Do not reload the shared nginx
+  # (a reload would also apply anyone else's pending edits) — only prove our config is live.
+  if [ -e "$CONF" ] && cmp -s "$tmpl" "$CONF"; then
+    config_active "$tmpl" ||
+      die "$CONF matches the template but nginx is not serving it — not reloading the shared nginx blindly; investigate (nginx -t, error.log)"
+    log "nginx config unchanged ($(basename "$tmpl") already active) — no reload, other sites untouched"
+    return 0
+  fi
   local before backup=""
   before=$(snapshot_sites)
   if [ -e "$CONF" ]; then
@@ -242,7 +252,20 @@ verify() {
       return 1
     }
   fi
-  log "verify OK over $scheme: index.html matches release $(readlink "$SITE/current"), assets cached immutable"
+  local audio
+  audio=$(cd "$SITE/current" && find assets -maxdepth 1 -name '*.m4a' 2>/dev/null | LC_ALL=C sort | head -1 || true)
+  if [ -n "$audio" ]; then
+    want=$(sha256sum "$SITE/current/$audio" | cut -d' ' -f1)
+    got=$(curl -fsS -m 20 "${opts[@]}" "$url/$audio" | sha256sum | cut -d' ' -f1) || {
+      warn "GET /$audio failed"
+      return 1
+    }
+    [ "$want" = "$got" ] || {
+      warn "served /$audio does not match the release"
+      return 1
+    }
+  fi
+  log "verify OK over $scheme: index.html matches release $(readlink "$SITE/current"), assets cached immutable${audio:+, audio asset served intact}"
 }
 
 deploy() {
@@ -357,6 +380,47 @@ purge() {
   log "kits and baseline kept in $DEPLOY_ROOT (remove with: rm -rf $DEPLOY_ROOT)"
 }
 
+# Read-only: compare the live server with the pre-change baseline (post-release acceptance).
+audit() {
+  [ "$(id -u)" = 0 ] || die "run as root"
+  [ -f "$BASE/nginx-T.sha256" ] || die "no baseline at $BASE"
+  local ok=1 d now
+  log "baseline recorded $(cat "$BASE/recorded_at")"
+  if nginx -t 2>/dev/null; then log "nginx -t: OK"; else
+    warn "nginx -t FAILS"
+    ok=0
+  fi
+  d=$(diff <(cut -c1-200 "$BASE/nginx-files.sha256") <(nginx_file_hashes | cut -c1-200) | grep '^[<>]' | grep -v -F "$CONF" || true)
+  if [ -z "$d" ]; then
+    log "nginx files: identical to the baseline except $CONF"
+  else
+    ok=0
+    warn "nginx files changed since the baseline (other than ours):"
+    printf '%s\n' "$d" | sed 's/^/  /' >&2
+  fi
+  now=$(snapshot_sites)
+  if [ "$now" = "$(cat "$BASE/sites.txt")" ]; then
+    log "other sites + default certificate: identical to the baseline ($(grep -c . "$BASE/sites.txt") lines)"
+  else
+    ok=0
+    warn "site responses differ from the baseline:"
+    diff "$BASE/sites.txt" <(printf '%s\n' "$now") | grep '^[<>]' | sed 's/^/  /' >&2 || true
+  fi
+  if [ "$(listeners)" = "$(cat "$BASE/listeners.txt")" ]; then log "listening sockets: identical"; else
+    warn "listening sockets differ (may be unrelated services):"
+    diff "$BASE/listeners.txt" <(listeners) | grep '^[<>]' | sed 's/^/  /' >&2 || true
+  fi
+  local dk
+  dk=$( (docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | sed -E 's/ Up .*/ Up/' | LC_ALL=C sort) || true)
+  if [ "$dk" = "$(cat "$BASE/docker.txt")" ]; then log "containers: identical (names + Up)"; else
+    warn "containers differ (may be unrelated releases):"
+    diff "$BASE/docker.txt" <(printf '%s\n' "$dk") | grep '^[<>]' | sed 's/^/  /' >&2 || true
+  fi
+  status
+  [ "$ok" = 1 ] && log "AUDIT OK: only battle.ondream.ai differs from the baseline" ||
+    die "AUDIT FOUND DIFFERENCES (see warnings; they may belong to other projects — check before acting)"
+}
+
 status() {
   log "current:  $(readlink "$SITE/current" 2>/dev/null || echo none)"
   log "previous: $(cat "$STATE/PREVIOUS" 2>/dev/null || echo none)"
@@ -376,9 +440,10 @@ case "${1:-}" in
   cert) cert ;;
   rollback) rollback ;;
   purge) purge ;;
+  audit) audit ;;
   status) status ;;
   *)
-    sed -n '2,28p' "$0"
+    sed -n '2,30p' "$0"
     exit 2
     ;;
 esac

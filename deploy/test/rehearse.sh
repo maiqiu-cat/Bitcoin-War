@@ -9,9 +9,11 @@
 #   * HTTPS sites listening only on 192.0.2.10:443 and 127.0.0.1:443 (ssl http2), the first one
 #     being the implicit :443 default
 #   * another process owning 198.51.100.7:443 so a wildcard `listen 443` fails
-# Scenarios: preflight → deploy → refuse redeploy → second release → rollback → broken template
-# (auto-restore, live release kept) → bare `listen 443` template refused before any change →
-# certificate → HTTPS → purge (nginx config byte-identical to the baseline, default cert unchanged).
+# Scenarios: preflight → deploy → audit → refuse redeploy → second release (config unchanged → no
+# nginx reload) → rollback → broken template (auto-restore, live release kept) → bare `listen 443`
+# template refused before any change → certificate → HTTPS → content-only release over HTTPS (the
+# path of every later release: no reload, audit OK) → rollback to byte-identical previous release →
+# purge (nginx config byte-identical to the baseline, default cert unchanged).
 # Exits non-zero on the first failed assertion. Needs Docker and the ubuntu:24.04 image.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -37,6 +39,8 @@ mk battle-29991231-0001-broken
 echo "server { this is broken; }" >"$work/battle-29991231-0001-broken/nginx/battle.http.conf"
 echo "<!-- broken -->" >>"$work/battle-29991231-0001-broken/site/index.html"
 mk battle-29991231-0002-badlisten
+mk battle-29991231-0003-third
+echo "<!-- third -->" >>"$work/battle-29991231-0003-third/site/index.html"
 sed -i.bak -e 's/listen 192.0.2.10:443 ssl http2;/listen 443 ssl;/' -e '/listen 127.0.0.1:443/d' "$work/battle-29991231-0002-badlisten/nginx/battle.https.conf"
 
 cat >"$work/run.sh" <<'EOS'
@@ -45,7 +49,7 @@ fail() { echo "ASSERT FAILED: $*"; exit 1; }
 ok() { echo "  ok: $*"; }
 step() { echo; echo "===== $*"; }
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq >/dev/null && apt-get install -y -qq nginx curl openssl ca-certificates iproute2 >/dev/null 2>&1 || fail "apt-get"
+apt-get update -qq >/dev/null && apt-get install -y -qq nginx curl openssl ca-certificates iproute2 procps >/dev/null 2>&1 || fail "apt-get"
 ip addr add 192.0.2.10/32 dev lo && ip addr add 198.51.100.7/32 dev lo || fail "ip addr (needs --cap-add NET_ADMIN)"
 rm -f /etc/nginx/sites-enabled/default
 mkdir -p /var/www/other /var/www/miner /etc/ssl/other && echo other-ok >/var/www/other/index.html && echo miner >/var/www/miner/index.html
@@ -64,9 +68,11 @@ sleep 1
 nginx || fail "nginx start"
 FP0=$(nginx -T 2>/dev/null | sha256sum | cut -d' ' -f1)
 K1=$(ls -d /k/battle-2[0-8]*/ | head -1); K1=${K1%/}
-B=/k/battle-29991231-0001-broken; S=/k/battle-29991231-0000-second; L=/k/battle-29991231-0002-badlisten
+B=/k/battle-29991231-0001-broken; S=/k/battle-29991231-0000-second; L=/k/battle-29991231-0002-badlisten; T=/k/battle-29991231-0003-third
 get() { curl -s -H 'Host: battle.ondream.ai' http://127.0.0.1/; }
 other() { curl -sk --resolve other.test:443:127.0.0.1 https://other.test/; }
+gets() { curl -s --resolve battle.ondream.ai:443:127.0.0.1 https://battle.ondream.ai/; }
+workers() { pgrep -f 'nginx: worker' | sort -n | tr '\n' ' '; } # a reload replaces every worker
 defcert() { echo | openssl s_client -connect 127.0.0.1:443 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | tr -d ' '; }
 DEF0=$(defcert)
 
@@ -83,13 +89,17 @@ get | grep -q '<!doctype html>' || fail "site not served"; ok "site served over 
 [ "$(stat -c %U:%G /var/www/battle.ondream.ai/current/index.html)" = root:root ] || fail "release files not owned by root"; ok "release files owned by root:root"
 [ "$(other)" = other-ok ] || fail "other site broken"; ok "other site intact"
 [ "$(defcert)" = "$DEF0" ] || fail "default cert changed"; ok "default :443 cert unchanged"
+out=$(bash $K1/install.sh audit 2>&1); echo "$out" | grep -E "nginx files|other sites|AUDIT" | sed 's/^/  /'
+echo "$out" | grep -q "AUDIT OK" || fail "audit after deploy"; ok "audit: only our site differs from the baseline"
 
 step "redeploy same kit"
 bash $K1/install.sh deploy >/dev/null 2>&1 && fail "redeploy accepted"; ok "redeploy refused"
 
 step "deploy #2 + rollback"
-bash $S/install.sh deploy 2>&1 | tail -1
+W0=$(workers)
+out=$(bash $S/install.sh deploy 2>&1); echo "$out" | tail -1
 get | grep -q 'second' || fail "second release not live"; ok "second live"
+echo "$out" | grep -q "no reload" && [ "$(workers)" = "$W0" ] || fail "nginx reloaded for an unchanged config"; ok "config unchanged → nginx not reloaded (workers $W0)"
 bash $K1/install.sh rollback 2>&1 | tail -1
 get | grep -q 'second' && fail "rollback did not switch"; ok "rolled back"
 
@@ -128,6 +138,21 @@ curl -s --resolve battle.ondream.ai:443:127.0.0.1 https://battle.ondream.ai/ | g
 [ "$(other)" = other-ok ] || fail "other site broken"; ok "other site intact"
 [ "$(defcert)" = "$DEF0" ] || fail "default cert changed"; ok "default :443 cert still $DEF0"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: unknown.test' http://127.0.0.1/)" = 301 ] || fail "port 80 default changed"; ok "port 80 default_server unchanged"
+
+step "content-only release over https (the path of every release after the first)"
+W0=$(workers); H0=$(gets | sha256sum)
+out=$(bash $T/install.sh deploy 2>&1); echo "$out" | grep -E "unchanged|current →|verify OK|ERROR" | sed 's/^/  /'
+echo "$out" | grep -q "no reload" && [ "$(workers)" = "$W0" ] || fail "nginx reloaded for a content-only release"; ok "nginx not reloaded (workers $W0)"
+echo "$out" | grep -q "verify OK over https.*audio asset served intact" || fail "https verify incl. audio asset"; ok "verify over https: index, immutable assets, audio bytes"
+gets | grep -q 'third' || fail "third release not live over https"; ok "third release live over https"
+[ "$(other)" = other-ok ] && [ "$(defcert)" = "$DEF0" ] || fail "other site / default cert"; ok "other site and default cert unchanged"
+out=$(bash $T/install.sh audit 2>&1); echo "$out" | grep -q "AUDIT OK" || { echo "$out"; fail "audit after https release"; }; ok "audit OK"
+
+step "rollback over https (perfect: previous bytes, nginx untouched)"
+bash $T/install.sh rollback 2>&1 | tail -1
+[ "$(gets | sha256sum)" = "$H0" ] || fail "rollback did not restore the previous index.html"; ok "served index.html identical to before the release"
+[ "$(workers)" = "$W0" ] || fail "rollback reloaded nginx"; ok "rollback did not touch nginx"
+[ "$(other)" = other-ok ] && [ "$(defcert)" = "$DEF0" ] || fail "other site / default cert"; ok "other site and default cert unchanged"
 
 step status
 bash $K1/install.sh status 2>&1

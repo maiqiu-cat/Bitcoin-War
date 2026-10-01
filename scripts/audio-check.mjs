@@ -15,12 +15,17 @@ import puppeteer from 'puppeteer-core';
 
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const PORT = 4174;
+// AUDIO_CHECK_URL=https://battle.ondream.ai pnpm verify:audio  → check a deployed site instead of a local preview
+const EXTERNAL = process.env.AUDIO_CHECK_URL?.replace(/\/$/, '');
 mkdirSync('verification', { recursive: true });
-const server = spawn('./node_modules/.bin/vite', ['preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
-await new Promise((res, rej) => {
-  const t = setTimeout(() => rej(new Error('preview server did not start')), 20000);
-  server.stdout.on('data', (d) => String(d).includes(String(PORT)) && (clearTimeout(t), res()));
-});
+let server = null;
+if (!EXTERNAL) {
+  server = spawn('./node_modules/.bin/vite', ['preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
+  await new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error('preview server did not start')), 20000);
+    server.stdout.on('data', (d) => String(d).includes(String(PORT)) && (clearTimeout(t), res()));
+  });
+}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fails = [];
 const check = (ok, msg) => {
@@ -28,7 +33,8 @@ const check = (ok, msg) => {
   if (!ok) fails.push(msg);
 };
 const report = {};
-const URL = `http://localhost:${PORT}/?sim&lang=zh`;
+const URL = `${EXTERNAL ?? `http://localhost:${PORT}`}/?sim&lang=zh`;
+console.log(`target: ${URL}`);
 const dbg = (page) => page.evaluate(() => ({ ...__bb.audio.debug, hint: document.querySelector('[data-k=soundHint]').classList.contains('show') }));
 const waitFor = async (page, fn, ms) => {
   const t0 = Date.now();
@@ -101,10 +107,10 @@ try {
   check(levels.hitsDb - levels.bedDb >= 8, `C2. hits stand out: loudest hit ${levels.hitsDb} dB vs score bed ${levels.bedDb} dB (+${(levels.hitsDb - levels.bedDb).toFixed(1)} dB)`);
   const w = levels.windowsDb;
   check(Math.min(...w.slice(1, 8)) > -45 && Math.min(...w.slice(28, 34)) > -45, `C3. calm score (1–8 s) and victory cue (28–34 s) audible: min ${Math.min(...w.slice(1, 8))} / ${Math.min(...w.slice(28, 34))} dB`);
-  writeFileSync('verification/audio-report.json', JSON.stringify({ at: new Date().toISOString(), ...report }, null, 1));
+  writeFileSync(EXTERNAL ? 'verification/audio-report-production.json' : 'verification/audio-report.json', JSON.stringify({ at: new Date().toISOString(), url: URL, ...report }, null, 1));
   await browser.close();
 } finally {
-  server.kill();
+  server?.kill();
 }
 console.log(fails.length ? `\n${fails.length} check(s) failed` : '\nAUDIO CHECKS PASSED → verification/audio-preview.wav');
 process.exit(fails.length ? 1 : 0);

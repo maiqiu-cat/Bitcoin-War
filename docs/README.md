@@ -4,7 +4,7 @@
 
 | 目录 | 内容 | 什么时候读 |
 | --- | --- | --- |
-| [handoff/](handoff/) | [session-log.md](handoff/session-log.md)：历次会话做了什么、提交、验证数据<br>[runbook.md](handoff/runbook.md)：环境、运行、git 和 GitHub、排障<br>[deploy.md](handoff/deploy.md)：发布到 battle.ondream.ai 的方案、安全设计和步骤（**尚未发布**） | 接手第一件事 |
+| [handoff/](handoff/) | [session-log.md](handoff/session-log.md)：历次会话做了什么、提交、验证数据<br>[runbook.md](handoff/runbook.md)：环境、运行、git 和 GitHub、排障<br>[deploy.md](handoff/deploy.md)：发布到 battle.ondream.ai 的方案、安全设计和步骤（**尚未发布**）<br>[deploy-plan-2026-10-01.md](handoff/deploy-plan-2026-10-01.md)：只读审计、影响分析、分阶段计划、完美回退 | 接手第一件事 |
 | [roadmap/](roadmap/) | [backlog.md](roadmap/backlog.md)：按优先级排的待办、已知问题、待用户决定的问题 | 决定下一步做什么 |
 | [architecture/](architecture/) | [overview.md](architecture/overview.md)：分层、数据流、运行循环、坐标系<br>[modules.md](architecture/modules.md)：逐文件职责和关键导出 | 改任何代码之前 |
 | [data-sources/](data-sources/) | [README.md](data-sources/README.md)：交易所总表<br>[exchanges.md](data-sources/exchanges.md)：逐家频道、格式、方向语义、坑<br>[index-methodology.md](data-sources/index-methodology.md)：指数、权重、大单合并 | 改数据层 |

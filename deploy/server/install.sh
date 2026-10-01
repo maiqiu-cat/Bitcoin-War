@@ -5,18 +5,25 @@
 #   /root/battle-deploy/battle-<id>/install.sh <command>
 #
 # Commands
-#   preflight   read-only checks (nginx, config, conflicts, disk, other sites)
-#   deploy      install this kit's site as a new release, switch `current`, install nginx config
-#   cert        issue the Let's Encrypt certificate (needs DNS → this server), switch to HTTPS config
-#   rollback    point `current` back to the previous release
-#   uninstall   remove the nginx site config (files under /var/www/battle.ondream.ai are kept)
+#   preflight   read-only checks (nginx, sockets, conflicts, disk, other sites)
+#   baseline    record the pre-change state once (nginx tarball + fingerprints + site codes);
+#               runs automatically before the first change and is never overwritten
+#   deploy      install this kit as a new release, install the nginx site, switch `current`
+#   cert        issue the Let's Encrypt certificate (DNS must point here), switch to HTTPS
+#   rollback    point `current` back to the previous release (site stays online)
+#   purge       full rollback to the baseline: remove the nginx site, prove nginx config is
+#               byte-identical to the baseline, compare every other site, delete our files
+#               and (unless KEEP_CERT=1) our certificate
 #   status      show releases, config, certificate and HTTP checks
 #
 # Safety rules (shared server: other projects' sites live here)
-#   * only touches: /var/www/battle.ondream.ai, /var/www/battle-acme,
-#     /etc/nginx/conf.d/zz-battle.ondream.ai.conf, and certbot's battle.ondream.ai lineage
-#   * every nginx change: backup → nginx -t → reload → compare other sites' HTTP codes
-#     before/after; any failure or change restores the previous config automatically
+#   * only touches /var/www/battle.ondream.ai, /var/www/battle-acme,
+#     /etc/nginx/conf.d/zz-battle.ondream.ai.conf, certbot's battle.ondream.ai lineage,
+#     and /root/battle-deploy (kits + baseline)
+#   * only server blocks, no http-level directives; HTTPS listens on exactly the sockets the
+#     other sites already use (checked in preflight), so no new socket is ever bound
+#   * every nginx change: backup → nginx -t → reload → compare other sites' HTTP/HTTPS codes
+#     and the default certificate before/after; any failure or difference restores automatically
 set -euo pipefail
 
 DOMAIN=battle.ondream.ai
@@ -25,6 +32,8 @@ SITE=/var/www/battle.ondream.ai
 ACME=/var/www/battle-acme
 CONF=/etc/nginx/conf.d/zz-battle.ondream.ai.conf
 CERT=/etc/letsencrypt/live/$DOMAIN/fullchain.pem
+DEPLOY_ROOT=${DEPLOY_ROOT:-/root/battle-deploy}
+BASE="$DEPLOY_ROOT/baseline"
 KIT="$(cd "$(dirname "$0")" && pwd)"
 REL="$(basename "$KIT")"
 REL="${REL#battle-}"
@@ -43,6 +52,7 @@ reload_nginx() {
   else
     nginx -s reload
   fi
+  sleep 2 # reload is asynchronous; let the new workers take over before anyone checks
 }
 
 # "<file> <name>" for every server_name in the live config (handles one-line server blocks).
@@ -60,10 +70,11 @@ server_names() {
 # Host names of every other site nginx serves (exact names only).
 other_hosts() {
   server_names | awk -v conf="$CONF" '$1 != conf {print $2}' |
-    grep -E '^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' | grep -v -x "$DOMAIN" | sort -u | head -20 || true
+    grep -E '^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' | grep -v -x "$DOMAIN" | sort -u | head -40 || true
 }
 
-# "host http-code https-code" for each other site, via loopback (no DNS involved).
+# "host http-code https-code" for each other site via loopback, plus the certificate nginx
+# presents without SNI (the implicit :443 default) — none of these may change.
 snapshot_sites() {
   local h c80 c443
   for h in $(other_hosts); do
@@ -71,24 +82,64 @@ snapshot_sites() {
     c443=$(curl -sk -o /dev/null -m 8 -w '%{http_code}' --resolve "$h:443:127.0.0.1" "https://$h/" || true)
     printf '%s %s %s\n' "$h" "$c80" "$c443"
   done
+  printf 'default-cert %s\n' "$(echo | openssl s_client -connect 127.0.0.1:443 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | tr -d ' ')"
+}
+
+nginx_fingerprint() { nginx -T 2>/dev/null | sha256sum | cut -d' ' -f1; }
+
+nginx_file_hashes() {
+  find /etc/nginx -type f | LC_ALL=C sort | xargs sha256sum 2>/dev/null
+}
+
+listeners() { ss -ltnH 2>/dev/null | awk '{print $4}' | LC_ALL=C sort -u; }
+
+# Every :443 listen in our HTTPS template must name an explicit address that nginx already owns.
+# A bare/wildcard `listen 443` passes `nginx -t` but fails at reload (another process holds
+# 198.51.100.7:443), leaving nginx on the old config and a poisoned file in conf.d.
+check_https_sockets() {
+  local tmpl="$KIT/nginx/battle.https.conf" want n=0
+  [ -f "$tmpl" ] || return 0
+  for want in $(awk '/^[ \t]*listen[ \t]/ {a=$2; sub(/;$/,"",a); if (a ~ /(^|:)443$/) print a}' "$tmpl"); do
+    case "$want" in
+      443 | \*:443 | 0.0.0.0:443 | \[::\]:443) die "template has wildcard 'listen $want' — must use the explicit sockets other sites use; refusing" ;;
+    esac
+    ss -ltnpH 2>/dev/null | awk -v w="$want" '$4==w' | grep -q nginx ||
+      die "template listens on $want but nginx does not currently own that socket — refusing"
+    n=$((n + 1))
+  done
+  [ "$n" -gt 0 ] || die "HTTPS template has no :443 listen"
+  log "HTTPS sockets in template are already bound by nginx: $(awk '/^[ \t]*listen[ \t]/ {a=$2; sub(/;$/,"",a); if (a ~ /:443$/) printf "%s ", a}' "$tmpl")"
+}
+
+# Prove nginx is actually running the config we just installed (a failed reload keeps the old one).
+config_active() {
+  local tmpl="$1" tok body subj
+  tok="probe-$RANDOM$RANDOM"
+  echo "$tok" >"$ACME/.well-known/acme-challenge/$tok"
+  body=$(curl -s -m 8 -H "Host: $DOMAIN" "http://127.0.0.1/.well-known/acme-challenge/$tok" || true)
+  rm -f "$ACME/.well-known/acme-challenge/$tok"
+  [ "$body" = "$tok" ] || return 1
+  if [ "$tmpl" = "$KIT/nginx/battle.https.conf" ]; then
+    subj=$(echo | openssl s_client -servername "$DOMAIN" -connect 127.0.0.1:443 2>/dev/null | openssl x509 -noout -subject 2>/dev/null)
+    case "$subj" in *"$DOMAIN"*) ;; *) return 1 ;; esac
+  fi
+  return 0
 }
 
 preflight() {
   [ "$(id -u)" = 0 ] || die "run as root"
   command -v nginx >/dev/null || die "nginx not found"
   command -v curl >/dev/null || die "curl not found"
+  command -v openssl >/dev/null || die "openssl not found"
   log "nginx: $(nginx -v 2>&1)"
   nginx -t 2>/dev/null || die "current nginx config already fails 'nginx -t' — not touching anything"
-  [ -d /etc/nginx/conf.d ] || die "/etc/nginx/conf.d missing"
-  nginx -T 2>/dev/null | grep -q 'include[[:space:]]\+/etc/nginx/conf.d/\*\.conf' || warn "nginx.conf does not visibly include conf.d/*.conf"
-
-  # Another file already serving this domain?
+  nginx -T 2>/dev/null | grep -q 'include[[:space:]]\+/etc/nginx/conf.d/\*\.conf' || die "nginx.conf does not include conf.d/*.conf"
   local conflict
   conflict=$(server_names | awk -v conf="$CONF" -v d="$DOMAIN" '$1 != conf && $2 == d {print $1}' | sort -u)
   [ -z "$conflict" ] || die "$DOMAIN already configured in: $conflict"
-
-  log "default_server lines (informational):"
-  nginx -T 2>/dev/null | grep -n 'default_server' | sed 's/^/  /' || log "  (none — first server block per port is the implicit default; our file is named zz-* to stay last)"
+  check_https_sockets
+  log "explicit default_server lines:"
+  nginx -T 2>/dev/null | grep -n 'default_server' | grep -v '#' | sed 's/^/  /' || log "  (none)"
   local avail
   avail=$(df -Pm /var/www 2>/dev/null | awk 'NR==2{print $4}')
   log "free space on /var/www: ${avail:-?} MB"
@@ -99,11 +150,32 @@ preflight() {
   fi
   command -v certbot >/dev/null && log "certbot: $(certbot --version 2>&1)" || warn "certbot not installed (needed for 'cert')"
   [ -f "$CERT" ] && log "certificate present: $(openssl x509 -enddate -noout -in "$CERT")" || log "certificate: not yet issued"
+  log "nginx fingerprint: $(nginx_fingerprint)"
   local sites
   sites=$(snapshot_sites)
-  log "other sites (host http https): $(printf '%s\n' "$sites" | grep -c . || true) found"
+  log "other sites (host http https) + default cert:"
   printf '%s\n' "$sites" | sed 's/^/  /'
-  log "preflight OK"
+  log "preflight OK (nothing was changed)"
+}
+
+# Record the pre-change state once. Never overwritten: it is what `purge` restores to.
+baseline() {
+  if [ -f "$BASE/nginx-T.sha256" ]; then
+    log "baseline already recorded at $BASE ($(cat "$BASE/recorded_at"))"
+    return 0
+  fi
+  [ ! -e "$CONF" ] || die "our nginx config already exists — cannot record a clean baseline"
+  install -d -m 700 "$BASE"
+  date -u +%Y-%m-%dT%H:%M:%SZ >"$BASE/recorded_at"
+  tar -czf "$BASE/etc-nginx.tgz" -C / etc/nginx
+  nginx_fingerprint >"$BASE/nginx-T.sha256"
+  nginx -T 2>/dev/null >"$BASE/nginx-T.txt"
+  nginx_file_hashes >"$BASE/nginx-files.sha256"
+  snapshot_sites >"$BASE/sites.txt"
+  listeners >"$BASE/listeners.txt"
+  (docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | sed -E 's/ Up .*/ Up/' | LC_ALL=C sort) >"$BASE/docker.txt" || true
+  chmod 600 "$BASE"/*
+  log "baseline recorded in $BASE (nginx fingerprint $(cat "$BASE/nginx-T.sha256"))"
 }
 
 # Install the right nginx template (http before the cert exists, https after), with automatic restore.
@@ -111,6 +183,7 @@ write_nginx() {
   local tmpl="$KIT/nginx/battle.http.conf"
   [ -f "$CERT" ] && tmpl="$KIT/nginx/battle.https.conf"
   [ -f "$tmpl" ] || die "missing template $tmpl"
+  [ "$tmpl" = "$KIT/nginx/battle.https.conf" ] && check_https_sockets
   install -d -m 700 "$STATE"
   local before backup=""
   before=$(snapshot_sites)
@@ -124,27 +197,30 @@ write_nginx() {
     warn "restoring previous nginx state"
     if [ -n "$backup" ]; then cp -p "$backup" "$CONF"; else rm -f "$CONF"; fi
     nginx -t && reload_nginx
-    sleep 2 # reload is asynchronous; let new workers take over before anyone re-checks
   }
   if ! nginx -t; then
     restore
     die "nginx -t failed with the new config (restored)"
   fi
   reload_nginx
-  sleep 1
+  if ! config_active "$tmpl"; then
+    tail -n 5 /var/log/nginx/error.log 2>/dev/null | sed 's/^/  error.log: /' >&2 || true
+    restore
+    die "nginx did not apply the new config (reload failed?) — restored"
+  fi
   local after
   after=$(snapshot_sites)
   if [ "$before" != "$after" ]; then
     printf 'before:\n%s\nafter:\n%s\n' "$before" "$after" >&2
     restore
-    die "other sites changed their HTTP responses after reload (restored)"
+    die "other sites changed their responses after reload (restored)"
   fi
-  log "nginx config installed: $(basename "$tmpl") → $CONF"
+  log "nginx config installed: $(basename "$tmpl") → $CONF (other sites unchanged)"
 }
 
 verify() {
-  local want got scheme=http opts=(-H "Host: $DOMAIN") url="http://127.0.0.1"
-  if [ -f "$CERT" ]; then
+  local want got opts=(-H "Host: $DOMAIN") url="http://127.0.0.1" scheme=http
+  if [ -f "$CERT" ] && grep -q 'listen .*443' "$CONF" 2>/dev/null; then
     scheme=https
     opts=(--resolve "$DOMAIN:443:127.0.0.1")
     url="https://$DOMAIN"
@@ -171,8 +247,9 @@ verify() {
 
 deploy() {
   preflight
+  baseline
   [ -d "$KIT/site" ] && [ -f "$KIT/site/index.html" ] || die "kit has no site/index.html"
-  install -d -m 755 "$SITE" "$SITE/releases" "$ACME" "$ACME/.well-known/acme-challenge"
+  install -d -m 755 "$SITE" "$SITE/releases" "$ACME" "$ACME/.well-known" "$ACME/.well-known/acme-challenge"
   [ ! -e "$SITE/releases/$REL" ] || die "release $REL already exists — build a new kit instead of overwriting"
   cp -a "$KIT/site" "$SITE/releases/$REL"
   find "$SITE/releases/$REL" -type d -exec chmod 755 {} +
@@ -191,7 +268,7 @@ deploy() {
       mv -Tf "$SITE/current.tmp" "$SITE/current"
       die "verification failed — current switched back to $prev"
     fi
-    die "verification failed (first release, nothing to switch back to; run 'uninstall' to remove the site)"
+    die "verification failed on the first release — run 'purge' to return to the baseline"
   fi
   printf '%s\n' "$prev" >"$STATE/PREVIOUS"
   log "deployed $REL — http://$DOMAIN/ (https after 'cert')"
@@ -204,11 +281,10 @@ cert() {
   if [ ! -f "$CERT" ]; then
     local resolved
     resolved=$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk 'NR==1{print $1}')
-    [ "$resolved" = "$EXPECT_IP" ] || die "$DOMAIN resolves to '${resolved:-nothing}', expected $EXPECT_IP — add the DNS A record and wait for DNS"
+    [ "$resolved" = "$EXPECT_IP" ] || die "$DOMAIN resolves to '${resolved:-nothing}', expected $EXPECT_IP — fix the DNS A record / wait for DNS"
     # Self-test the challenge path through nginx before asking Let's Encrypt.
-    local tok="selftest-$RANDOM$RANDOM"
+    local tok="selftest-$RANDOM$RANDOM" body
     echo "$tok" >"$ACME/.well-known/acme-challenge/$tok"
-    local body
     body=$(curl -fsS -m 8 -H "Host: $DOMAIN" "http://127.0.0.1/.well-known/acme-challenge/$tok" || true)
     rm -f "$ACME/.well-known/acme-challenge/$tok"
     [ "$body" = "$tok" ] || die "ACME challenge path not served by nginx"
@@ -218,15 +294,14 @@ cert() {
     log "certificate already present"
   fi
   write_nginx
-  verify || die "HTTPS verification failed (config kept; run 'status' and check nginx error log)"
+  verify || die "HTTPS verification failed — run 'purge' (or reinstall the HTTP config by removing the cert) and investigate"
   log "HTTPS live: https://$DOMAIN/ ($(openssl x509 -enddate -noout -in "$CERT"))"
 }
 
 rollback() {
-  local prev
+  local prev cur
   prev=$(cat "$STATE/PREVIOUS" 2>/dev/null || true)
   [ -n "$prev" ] && [ -d "$SITE/$prev" ] || die "no previous release recorded"
-  local cur
   cur=$(readlink "$SITE/current")
   ln -sfn "$prev" "$SITE/current.tmp"
   mv -Tf "$SITE/current.tmp" "$SITE/current"
@@ -235,18 +310,50 @@ rollback() {
   verify || die "verification failed after rollback"
 }
 
-uninstall() {
-  [ -e "$CONF" ] || {
-    log "no nginx config installed"
-    return
-  }
-  install -d -m 700 "$STATE"
-  cp -p "$CONF" "$STATE/nginx-uninstalled-$(date -u +%Y%m%dT%H%M%SZ).conf"
-  rm -f "$CONF"
-  nginx -t || die "nginx -t failed after removing config"
-  reload_nginx
-  sleep 1
-  log "nginx site removed (files kept under $SITE; certificate kept)"
+# Full rollback to the recorded baseline, with proof.
+purge() {
+  [ "$(id -u)" = 0 ] || die "run as root"
+  [ -f "$BASE/nginx-T.sha256" ] || die "no baseline at $BASE — refusing (cannot prove the result)"
+  if [ -e "$CONF" ]; then
+    cp -p "$CONF" "$BASE/zz-battle.removed-$(date -u +%Y%m%dT%H%M%SZ).conf"
+    rm -f "$CONF"
+    nginx -t || die "nginx -t failed after removing our config (it was backed up in $BASE)"
+    reload_nginx
+    log "nginx site removed and nginx reloaded"
+  else
+    log "nginx site not installed"
+  fi
+  local fp ok=1
+  fp=$(nginx_fingerprint)
+  if [ "$fp" = "$(cat "$BASE/nginx-T.sha256")" ]; then
+    log "nginx config is byte-identical to the baseline ($fp)"
+  else
+    ok=0
+    warn "nginx config differs from the baseline — files changed since $(cat "$BASE/recorded_at"):"
+    diff <(cut -c1-200 "$BASE/nginx-files.sha256") <(nginx_file_hashes | cut -c1-200) | grep '^[<>]' | sed 's/^/  /' >&2 || true
+    warn "if those changes are not ours, they belong to someone else — do NOT restore $BASE/etc-nginx.tgz blindly"
+  fi
+  local now
+  now=$(snapshot_sites)
+  if [ "$now" = "$(cat "$BASE/sites.txt")" ]; then
+    log "all other sites answer exactly as in the baseline"
+  else
+    ok=0
+    warn "site responses differ from the baseline:"
+    diff "$BASE/sites.txt" <(printf '%s\n' "$now") | grep '^[<>]' | sed 's/^/  /' >&2 || true
+  fi
+  if [ "$(listeners)" != "$(cat "$BASE/listeners.txt")" ]; then
+    warn "listening sockets differ from the baseline (may be unrelated services):"
+    diff "$BASE/listeners.txt" <(listeners) | grep '^[<>]' | sed 's/^/  /' >&2 || true
+  fi
+  rm -rf -- "$SITE" "$ACME"
+  log "removed $SITE and $ACME"
+  if [ -d "/etc/letsencrypt/live/$DOMAIN" ] && [ "${KEEP_CERT:-0}" != "1" ]; then
+    certbot delete --cert-name "$DOMAIN" --non-interactive && log "certificate lineage $DOMAIN deleted"
+  fi
+  [ "$ok" = 1 ] && log "PURGE VERIFIED: server is back to the baseline recorded $(cat "$BASE/recorded_at")" ||
+    die "purge finished but the server is NOT identical to the baseline (see warnings)"
+  log "kits and baseline kept in $DEPLOY_ROOT (remove with: rm -rf $DEPLOY_ROOT)"
 }
 
 status() {
@@ -254,6 +361,7 @@ status() {
   log "previous: $(cat "$STATE/PREVIOUS" 2>/dev/null || echo none)"
   log "releases: $(ls "$SITE/releases" 2>/dev/null | tr '\n' ' ')"
   log "config:   $([ -e "$CONF" ] && echo "$CONF" || echo 'not installed')"
+  log "baseline: $([ -f "$BASE/recorded_at" ] && cat "$BASE/recorded_at" || echo none)"
   [ -f "$CERT" ] && log "cert:     $(openssl x509 -enddate -noout -in "$CERT")" || log "cert:     none"
   log "http:     $(curl -s -o /dev/null -m 8 -w '%{http_code}' -H "Host: $DOMAIN" http://127.0.0.1/)"
   [ -f "$CERT" ] && log "https:    $(curl -s -o /dev/null -m 8 -w '%{http_code}' --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/")"
@@ -262,13 +370,14 @@ status() {
 
 case "${1:-}" in
   preflight) preflight ;;
+  baseline) baseline ;;
   deploy) deploy ;;
   cert) cert ;;
   rollback) rollback ;;
-  uninstall) uninstall ;;
+  purge) purge ;;
   status) status ;;
   *)
-    sed -n '2,20p' "$0"
+    sed -n '2,28p' "$0"
     exit 2
     ;;
 esac

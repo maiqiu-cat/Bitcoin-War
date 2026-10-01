@@ -3,3 +3,4 @@ dist
 .DS_Store
 verification/*.png
 !verification/README.md
+tests/fixtures/_capture/

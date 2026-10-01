@@ -2,7 +2,8 @@
 
 这是对 Newhedge「Bitcoin Battlefield」（<https://newhedge.io/bitcoin/battlefield>，推文 <https://x.com/newhedge_io/status/2104903265959760161>）的可行性验证。BTC 价格就是战线，盘口挂单就是兵力，主动成交、爆仓和期权成交会变成战场上的炮击。
 
-结论和验证证据见 [FEASIBILITY.md](FEASIBILITY.md)。
+- 可行性结论和验证证据：[docs/research/feasibility.md](docs/research/feasibility.md)
+- **接手开发（人或 agent）请先读 [AGENTS.md](AGENTS.md)**，全部文档索引在 [docs/README.md](docs/README.md)
 
 ## 运行
 
@@ -13,6 +14,7 @@ pnpm dev                 # http://localhost:5173 实时行情
 pnpm test                # 单元测试（解析器使用真实抓取的交易所消息）
 pnpm verify:feeds [秒]   # 在 Node 里跑真实交易所连接，输出指数/盘口/事件检查（默认 45 秒）
 pnpm build && pnpm verify:screens   # 无头 Chrome 截图 + FPS/报错收集，输出到 verification/
+pnpm capture:fixtures [秒]  # 抓取真实交易所消息到 tests/fixtures/_capture/，用来刷新测试夹具
 ```
 
 ### URL 参数

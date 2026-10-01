@@ -5,7 +5,7 @@
 
 ## 结论
 
-**好实现，至少「能跑起来、看得懂」这一层不难。** 本目录下的验证项目已经完成主流程，全部在本机验证过：
+**好实现，至少「能跑起来、看得懂」这一层不难。** 本项目（仓库根目录）已经完成主流程，全部在本机验证过：
 
 - 7 个数据源接入，其中 6 个可用、Binance 被地区封锁
 - 跨交易所成交量加权价格
@@ -37,7 +37,7 @@
 | 光照 | Golden hour / Clear | ✅ 黄昏、白天、夜晚，或按本地时间自动 |
 | 聊天 | Market chat | ❌ 未做（需要账号、后端和内容审核，和本次验证无关） |
 
-参考帧：`docs/screens/newhedge-reference.jpg`
+参考帧：[`newhedge-frames/`](newhedge-frames/)（原视频每 2 秒一帧，逐帧说明见 [newhedge-reference.md](newhedge-reference.md)）
 
 ## 验证证据
 
@@ -50,7 +50,7 @@
 | 回合流转 | 窄区间模拟（±0.06%）：第 1 回合熊方胜 → 自动开第 2 回合 → 第 2 回合牛方胜，横幅和庆祝爆炸正常 | 同上，`sim-rounds-*` |
 | 构建 | `tsc --noEmit` 和 `vite build` 都通过。JS 包 632KB，gzip 后 165KB | `pnpm build` |
 
-截图（`docs/screens/`）：
+截图（[`docs/screens/`](../screens/)）：
 
 - `live-2-front-closeup.jpg`：实时行情，前线近景
 - `live-1-overview.jpg`：实时行情，电影镜头近景（行军、交火、倒地）

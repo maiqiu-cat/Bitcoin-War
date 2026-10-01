@@ -16,6 +16,13 @@ interface Preset {
   fog: string;
   exposure: number;
   lineGlow: number;
+  /** Post-processing grade. */
+  bloom: number;
+  bloomThreshold: number;
+  warm: [number, number, number];
+  vignette: number;
+  smoke: string;
+  cloudShadow: number;
 }
 
 export const PRESETS: Record<LightingName, Preset> = {
@@ -32,7 +39,13 @@ export const PRESETS: Record<LightingName, Preset> = {
     skyBottom: '#1b1410',
     fog: '#b7835e',
     exposure: 1.0,
-    lineGlow: 1.2,
+    lineGlow: 1.0,
+    bloom: 0.55,
+    bloomThreshold: 1.3,
+    warm: [1.05, 1.0, 0.92],
+    vignette: 0.34,
+    smoke: '#9a8270',
+    cloudShadow: 0.22,
   },
   day: {
     label: 'Daylight',
@@ -47,7 +60,13 @@ export const PRESETS: Record<LightingName, Preset> = {
     skyBottom: '#2a2620',
     fog: '#c3d6e6',
     exposure: 0.95,
-    lineGlow: 0.9,
+    lineGlow: 0.85,
+    bloom: 0.4,
+    bloomThreshold: 1.7,
+    warm: [1.0, 1.0, 1.0],
+    vignette: 0.26,
+    smoke: '#a49c92',
+    cloudShadow: 0.25,
   },
   night: {
     label: 'Night',
@@ -62,7 +81,13 @@ export const PRESETS: Record<LightingName, Preset> = {
     skyBottom: '#030305',
     fog: '#121a2a',
     exposure: 1.35,
-    lineGlow: 2.2,
+    lineGlow: 0.9,
+    bloom: 0.75,
+    bloomThreshold: 1.0,
+    warm: [0.92, 0.98, 1.1],
+    vignette: 0.42,
+    smoke: '#3c4250',
+    cloudShadow: 0.1,
   },
 };
 

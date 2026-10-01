@@ -96,11 +96,27 @@ export interface NarrationInput {
   secondsSinceStart: number;
 }
 
-/** One-line war report derived from price progress, taker flow and book changes. */
-export function narrate(i: NarrationInput): string {
-  if (i.secondsSinceStart < 8) return 'Armies deploying to the front';
-  if (i.progress > 0.85) return 'Bulls storming the bear base';
-  if (i.progress < 0.15) return 'Bears storming the bull base';
+export type StatusKey =
+  | 'deploying'
+  | 'bullsStorm'
+  | 'bearsStorm'
+  | 'askAbsorbed'
+  | 'bidAbsorbed'
+  | 'bullsCharging'
+  | 'bullsAdvancing'
+  | 'bearsCharging'
+  | 'bearsAdvancing'
+  | 'askReinforced'
+  | 'bidReinforced'
+  | 'bullsProbing'
+  | 'bearsProbing'
+  | 'skirmishes';
+
+/** One-line war report (an i18n key under `status.`) from price progress, taker flow and book changes. */
+export function narrate(i: NarrationInput): StatusKey {
+  if (i.secondsSinceStart < 8) return 'deploying';
+  if (i.progress > 0.85) return 'bullsStorm';
+  if (i.progress < 0.15) return 'bearsStorm';
 
   const moved = i.progress - i.progressBefore;
   const total = i.buyFlow + i.sellFlow;
@@ -108,13 +124,13 @@ export function narrate(i: NarrationInput): string {
   const askChange = i.askNearBefore > 0 ? i.askNear / i.askNearBefore - 1 : 0;
   const bidChange = i.bidNearBefore > 0 ? i.bidNear / i.bidNearBefore - 1 : 0;
 
-  if (moved > 0.04 && askChange < -0.2) return 'Ask liquidity absorbed';
-  if (moved < -0.04 && bidChange < -0.2) return 'Bid liquidity absorbed';
-  if (moved > 0.04) return flowImb > 0.3 ? 'Bulls charging' : 'Armies advancing';
-  if (moved < -0.04) return flowImb < -0.3 ? 'Bears charging' : 'Bears advancing';
-  if (askChange > 0.25) return 'Ask resistance reinforced';
-  if (bidChange > 0.25) return 'Bid support reinforced';
-  if (flowImb > 0.4) return 'Bulls probing the line';
-  if (flowImb < -0.4) return 'Bears probing the line';
-  return 'Skirmishes along the front';
+  if (moved > 0.04 && askChange < -0.2) return 'askAbsorbed';
+  if (moved < -0.04 && bidChange < -0.2) return 'bidAbsorbed';
+  if (moved > 0.04) return flowImb > 0.3 ? 'bullsCharging' : 'bullsAdvancing';
+  if (moved < -0.04) return flowImb < -0.3 ? 'bearsCharging' : 'bearsAdvancing';
+  if (askChange > 0.25) return 'askReinforced';
+  if (bidChange > 0.25) return 'bidReinforced';
+  if (flowImb > 0.4) return 'bullsProbing';
+  if (flowImb < -0.4) return 'bearsProbing';
+  return 'skirmishes';
 }

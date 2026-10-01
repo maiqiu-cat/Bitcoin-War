@@ -37,6 +37,8 @@ export class CameraRig {
   private eventFocus: { p: THREE.Vector3; until: number } | null = null;
   private time = 0;
   private seedZ = 0;
+  private shakeAmt = 0;
+  private shakeOffset = new THREE.Vector3();
   onModeChange?: (cinematic: boolean) => void;
 
   constructor(
@@ -103,22 +105,40 @@ export class CameraRig {
     this.controls.update();
   }
 
+  /** Camera shake from nearby explosions (decays quickly). */
+  shake(amount: number) {
+    this.shakeAmt = Math.min(2.2, this.shakeAmt + amount);
+  }
+
   update(dt: number, c: DirectorContext) {
     this.time += dt;
+    // remove last frame's shake so it never accumulates into the controls
+    this.camera.position.sub(this.shakeOffset);
     if (!this.cinematic) {
       this.keyboardPan(dt);
       this.controls.update();
       this.look.copy(this.controls.target);
-      return;
+    } else {
+      this.shotT += dt / this.shot.dur;
+      if (this.shotT >= 1) this.nextShot();
+      const k = Math.min(1, this.shotT);
+      this.shot.pose(k * k * (3 - 2 * k), c, this.tmp);
+      const a = 1 - Math.exp(-dt * (this.shotT < 0.15 ? 1.4 : 2.6));
+      this.pos.lerp(this.tmp.pos, a);
+      this.look.lerp(this.tmp.look, a);
+      this.camera.position.copy(this.pos);
+      // subtle hand-held drift
+      const t = this.time;
+      this.camera.lookAt(
+        this.look.x + Math.sin(t * 0.63) * 0.35 + Math.sin(t * 1.7) * 0.08,
+        this.look.y + Math.sin(t * 0.91) * 0.22,
+        this.look.z + Math.cos(t * 0.47) * 0.3,
+      );
     }
-    this.shotT += dt / this.shot.dur;
-    if (this.shotT >= 1) this.nextShot();
-    this.shot.pose(Math.min(1, this.shotT), c, this.tmp);
-    const a = 1 - Math.exp(-dt * (this.shotT < 0.15 ? 1.6 : 3));
-    this.pos.lerp(this.tmp.pos, a);
-    this.look.lerp(this.tmp.look, a);
-    this.camera.position.copy(this.pos);
-    this.camera.lookAt(this.look);
+    this.shakeAmt *= Math.exp(-dt * 5);
+    const s = this.shakeAmt;
+    this.shakeOffset.set((Math.random() - 0.5) * s, (Math.random() - 0.5) * s * 0.6, (Math.random() - 0.5) * s);
+    this.camera.position.add(this.shakeOffset);
   }
 
   private nextShot() {

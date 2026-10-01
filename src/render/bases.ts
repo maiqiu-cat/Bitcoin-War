@@ -32,7 +32,15 @@ function houseGeometry(roof: string) {
 
 export class Bases {
   readonly group = new THREE.Group();
-  private flags: { mesh: THREE.Mesh; geo: THREE.PlaneGeometry; base: Float32Array }[] = [];
+  private flags: {
+    team: Team;
+    mesh: THREE.Mesh;
+    geo: THREE.PlaneGeometry;
+    base: Float32Array;
+    topY: number;
+    owner: Team;
+    anim: { t: number; to: Team } | null;
+  }[] = [];
   readonly lights: THREE.PointLight[] = [];
   readonly winLines: Record<Team, THREE.Mesh> = {} as never;
 
@@ -96,7 +104,15 @@ export class Bases {
     flag.position.set(pole.position.x, pole.position.y + 2.5, pole.position.z);
     flag.castShadow = true;
     g.add(flag);
-    this.flags.push({ mesh: flag, geo: flagGeo, base: Float32Array.from(flagGeo.attributes.position.array) });
+    this.flags.push({
+      team,
+      mesh: flag,
+      geo: flagGeo,
+      base: Float32Array.from(flagGeo.attributes.position.array),
+      topY: flag.position.y,
+      owner: team,
+      anim: null,
+    });
 
     // Perimeter fence
     const fenceMat = new THREE.MeshStandardMaterial({ color: '#8a7358', roughness: 1 });
@@ -123,7 +139,10 @@ export class Bases {
       const geo = new THREE.BoxGeometry(0.35, 0.08, 1.8).translate(lineX, groundHeight(lineX, z + 0.9) + 0.08, z + 0.9);
       dashes.push(geo);
     }
-    const line = new THREE.Mesh(mergeSimple(dashes), new THREE.MeshBasicMaterial({ color: colors.glow, transparent: true, opacity: 0.75 }));
+    const line = new THREE.Mesh(
+      mergeSimple(dashes),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(colors.glow).multiplyScalar(2.2), transparent: true, opacity: 0.75 }),
+    );
     this.winLines[team] = line;
     g.add(line);
 
@@ -134,8 +153,37 @@ export class Bases {
     return g;
   }
 
-  update(t: number) {
+  /** The loser's flag is lowered and raised again in the winner's colours. */
+  capture(loser: Team, winner: Team) {
+    const f = this.flags.find((x) => x.team === loser);
+    if (f && f.owner !== winner) f.anim = { t: 0, to: winner };
+  }
+
+  /** New round: every base flies its own flag again. */
+  reset() {
+    for (const f of this.flags) if (f.owner !== f.team) f.anim = { t: 0, to: f.team };
+  }
+
+  update(t: number, dt = 0.016) {
     for (const f of this.flags) {
+      if (f.anim) {
+        f.anim.t += dt;
+        const k = f.anim.t;
+        const lowered = f.topY - 5.2;
+        if (k < 1.1) f.mesh.position.y = f.topY + (lowered - f.topY) * easeInOut(k / 1.1);
+        else {
+          if (f.owner !== f.anim.to) {
+            f.owner = f.anim.to;
+            const c = TEAM_COLORS[f.owner].main;
+            const m = f.mesh.material as THREE.MeshStandardMaterial;
+            m.color.set(c);
+            m.emissive.set(c);
+          }
+          const r = Math.min(1, (k - 1.1) / 1.6);
+          f.mesh.position.y = lowered + (f.topY - lowered) * easeInOut(r);
+          if (r >= 1) f.anim = null;
+        }
+      }
       const pos = f.geo.attributes.position as THREE.BufferAttribute;
       for (let i = 0; i < pos.count; i++) {
         const x = f.base[i * 3];
@@ -152,4 +200,8 @@ export class Bases {
   setNight(night: boolean) {
     for (const l of this.lights) l.intensity = night ? 60 : 0;
   }
+}
+
+function easeInOut(x: number) {
+  return x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
 }

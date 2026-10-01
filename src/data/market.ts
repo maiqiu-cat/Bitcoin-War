@@ -41,10 +41,13 @@ export interface IndexResult {
 }
 
 export type FeedKind = 'trade' | 'option' | 'liq';
+/** i18n key suffix (`feed.<type>`). */
+export type FeedType = 'bigBuy' | 'bigSell' | 'optBuy' | 'optSell' | 'liqShort' | 'liqLong';
 
 export interface FeedItem {
   id: number;
   kind: FeedKind;
+  type: FeedType;
   ex: ExchangeId;
   /** true when the event pushes price up (taker buy / shorts liquidated). */
   bull: boolean;
@@ -171,6 +174,7 @@ export class MarketHub implements FeedSink {
       if (prem >= this.cfg.bigOptionPremiumUsd) {
         this.emit({
           kind: 'option',
+          type: t.side === 'buy' ? 'optBuy' : 'optSell',
           ex: t.ex,
           bull: t.side === 'buy',
           usd: prem,
@@ -232,6 +236,7 @@ export class MarketHub implements FeedSink {
     if (l.usd < this.cfg.minLiquidationUsd) return;
     this.emit({
       kind: 'liq',
+      type: l.liquidated === 'short' ? 'liqShort' : 'liqLong',
       ex: l.ex,
       bull: l.liquidated === 'short',
       usd: l.usd,
@@ -399,6 +404,7 @@ export class MarketHub implements FeedSink {
     const v = this.venue(ex);
     this.emit({
       kind: 'trade',
+      type: p.side === 'buy' ? 'bigBuy' : 'bigSell',
       ex,
       bull: p.side === 'buy',
       usd: p.usd,

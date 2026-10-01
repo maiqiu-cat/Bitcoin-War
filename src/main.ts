@@ -1,3 +1,4 @@
+import '@fontsource-variable/inter';
 import './ui/styles.css';
 import { ALL_SOURCES, createFeeds } from './data/feeds/exchanges';
 import { MarketHub, type FeedItem } from './data/market';
@@ -29,6 +30,7 @@ feeds.forEach((f) => f.start());
 const world = new World(document.getElementById('app')!, {
   shadows: quality !== 'low',
   pixelRatio: Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : 2),
+  post: quality !== 'low' && params.get('post') !== '0',
 });
 const battle = new BattleEngine({ halfRange });
 
@@ -49,7 +51,7 @@ const hud = new Hud(document.getElementById('hud')!, simMode ? 'sim' : 'live', {
 });
 hud.setLightingValue(lightingChoice);
 hud.setCinematic(world.rig.cinematic);
-world.rig.onModeChange = (on) => hud.setCinematic(on);
+world.onModeChange = (on) => hud.setCinematic(on);
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'f' && world.field) world.rig.focusFront(world.field.x(world.frontPrice));
 });
@@ -74,12 +76,12 @@ const nearHist: { ts: number; bid: number; ask: number; progress: number }[] = [
 let liq = { bid: 0, ask: 0 };
 let lastSlow = 0;
 
-function regimeLabel() {
+function regimeKey() {
   const v = hub.realizedVolPct(5);
-  if (!Number.isFinite(v)) return 'Warming up';
-  if (v < 0.03) return 'Quiet market';
-  if (v < 0.08) return 'Active market';
-  return 'Volatile market';
+  if (!Number.isFinite(v)) return 'regime.warming';
+  if (v < 0.03) return 'regime.quiet';
+  if (v < 0.08) return 'regime.active';
+  return 'regime.volatile';
 }
 
 function tick() {
@@ -94,13 +96,18 @@ function tick() {
       world.setRound(field, ev.round, price);
       usdPerSoldier = 0;
       nearHist.length = 0;
-      hud.banner(
-        'BATTLE BEGINS',
-        `<span class="b">Bulls</span> win at $${fmtPrice(ev.round.bullsWinAt)} · <span class="r">Bears</span> win at $${fmtPrice(ev.round.bearsWinAt)}`,
-      );
+      hud.showBanner({
+        title: 'banner.begin',
+        sub: 'banner.beginSub',
+        vars: { bulls: fmtPrice(ev.round.bullsWinAt), bears: fmtPrice(ev.round.bearsWinAt) },
+      });
     } else {
-      const winners = ev.winner === 'bulls' ? 'BULLS' : 'BEARS';
-      hud.banner(`${winners} WIN`, `Round ${ev.round.id} — base captured at $${fmtPrice(price)}`, ev.winner);
+      hud.showBanner({
+        title: `banner.${ev.winner}`,
+        sub: 'banner.winSub',
+        vars: { id: ev.round.id, price: fmtPrice(price) },
+        team: ev.winner,
+      });
       world.celebrate(ev.winner);
     }
   }
@@ -162,7 +169,7 @@ function tick() {
     hud.setLiquidity(liq.bid, liq.ask);
     hud.setVenues(hub.venues, idx);
     hud.setSources([...hub.books.keys()]);
-    hud.setRegime(regimeLabel());
+    hud.setRegime(regimeKey());
   }
 }
 setInterval(tick, 250);
@@ -176,6 +183,7 @@ function frame(t: number) {
   const dt = Math.min(0.05, (t - last) / 1000);
   last = t;
   world.frame(dt);
+  hud.frame(dt);
   stats.frames++;
   fpsAcc += dt;
   fpsN++;

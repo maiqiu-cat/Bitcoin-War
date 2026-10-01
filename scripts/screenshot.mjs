@@ -65,6 +65,9 @@ async function run(name, query, shots) {
         status: document.querySelector('[data-k=status]')?.textContent,
         shot: bb.world.rig.shotName,
         banner: document.querySelector('[data-k=bTitle]')?.textContent,
+        lang: document.documentElement.lang,
+        caption: document.querySelector('.caption')?.textContent,
+        title: document.title,
         history: bb.battle.history.map((r) => `#${r.id} ${r.winner}`),
       };
     });
@@ -85,7 +88,7 @@ const manualFront = (dx, h, dz) => `(() => {
 })()`;
 
 try {
-  await run('sim', '?sim&light=golden&seed=11', [
+  await run('sim', '?sim&light=golden&seed=11&lang=zh', [
     { id: '1-overview', waitMs: 9000 },
     { id: '2-front-closeup', waitMs: 3000, setup: manualFront(-26, 16, 34), settleMs: 1500 },
     { id: '3-wide', waitMs: 500, setup: manualFront(-10, 150, 175), settleMs: 1500 },
@@ -95,14 +98,16 @@ try {
   ]);
   // Narrow rounds (±0.06%) so wins happen quickly: verifies win -> celebration -> next round.
   const overview = manualFront(-40, 95, 120);
-  await run('sim-rounds', '?sim&range=0.06&seed=5&light=day', [
+  await run('sim-rounds', '?sim&range=0.06&seed=5&light=day&lang=zh', [
     { id: '1-win', waitFn: 'window.__bb?.battle.round?.winner', setup: overview, settleMs: 1200 },
     { id: '2-next-round', waitFn: 'window.__bb?.battle.round?.id >= 2 && !window.__bb.battle.round.winner', settleMs: 1500 },
   ]);
-  await run('live', '?light=golden', [
+  await run('live', '?light=golden&lang=en', [
     { id: '1-overview', waitMs: 16000 },
     { id: '2-front-closeup', waitMs: 3000, setup: manualFront(-30, 18, 38), settleMs: 1500 },
     { id: '3-day', waitMs: 500, setup: `document.querySelector('[data-k=lighting]').value='day';document.querySelector('[data-k=lighting]').dispatchEvent(new Event('change'));` + manualFront(-60, 70, 95), settleMs: 2000 },
+    // Language toggle: English -> Chinese via the HUD button.
+    { id: '4-lang-toggle', waitMs: 200, setup: `document.querySelector('[data-k=lang]').click()`, settleMs: 800 },
   ]);
 } finally {
   writeFileSync(`${OUT}/screens-report.json`, JSON.stringify(report, null, 1));

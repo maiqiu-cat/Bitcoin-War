@@ -41,13 +41,14 @@ describe('narrate', () => {
     secondsSinceStart: 60,
   };
   it('reports the right situation', () => {
-    expect(narrate({ ...base, secondsSinceStart: 2 })).toBe('Armies deploying to the front');
-    expect(narrate({ ...base, progress: 0.9 })).toBe('Bulls storming the bear base');
-    expect(narrate({ ...base, progress: 0.6, askNear: 50 })).toBe('Ask liquidity absorbed');
-    expect(narrate({ ...base, progress: 0.6, buyFlow: 10 })).toBe('Bulls charging');
-    expect(narrate({ ...base, askNear: 150 })).toBe('Ask resistance reinforced');
-    expect(narrate({ ...base, progress: 0.4, sellFlow: 10 })).toBe('Bears charging');
-    expect(narrate(base)).toBe('Skirmishes along the front');
+    expect(narrate({ ...base, secondsSinceStart: 2 })).toBe('deploying');
+    expect(narrate({ ...base, progress: 0.9 })).toBe('bullsStorm');
+    expect(narrate({ ...base, progress: 0.6, askNear: 50 })).toBe('askAbsorbed');
+    expect(narrate({ ...base, progress: 0.6, buyFlow: 10 })).toBe('bullsCharging');
+    expect(narrate({ ...base, progress: 0.6 })).toBe('bullsAdvancing');
+    expect(narrate({ ...base, askNear: 150 })).toBe('askReinforced');
+    expect(narrate({ ...base, progress: 0.4, sellFlow: 10 })).toBe('bearsCharging');
+    expect(narrate(base)).toBe('skirmishes');
   });
 });
 

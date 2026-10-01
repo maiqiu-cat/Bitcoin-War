@@ -40,6 +40,9 @@ export interface TerrainUniforms {
   uBearDark: { value: THREE.Color };
   uLine: { value: THREE.Color };
   uLineGlow: { value: number };
+  /** Momentary tint of the front line when price ticks (team colour * intensity). */
+  uFlash: { value: THREE.Color };
+  uCloud: { value: number };
 }
 
 export class Terrain {
@@ -58,6 +61,8 @@ export class Terrain {
       uBearDark: { value: new THREE.Color('#6e4630') },
       uLine: { value: new THREE.Color('#d8ffe6') },
       uLineGlow: { value: 1.4 },
+      uFlash: { value: new THREE.Color(0, 0, 0) },
+      uCloud: { value: 0.22 },
     };
     this.group.add(this.buildGround(), this.buildBoard(), this.buildRoad(), this.buildLakes(), this.buildTrees(), this.ticks);
   }
@@ -81,8 +86,8 @@ export class Terrain {
           '#include <common>',
           `#include <common>
 varying vec3 vBBWorld;
-uniform float uFront, uAmp, uTime, uLineGlow;
-uniform vec3 uBull, uBullDark, uBear, uBearDark, uLine;
+uniform float uFront, uAmp, uTime, uLineGlow, uCloud;
+uniform vec3 uBull, uBullDark, uBear, uBearDark, uLine, uFlash;
 ${FRONT_WAVE_GLSL}
 float bbHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float bbNoise(vec2 p) {
@@ -101,14 +106,19 @@ vec3 bbBear = mix(uBearDark, uBear, bbN);
 vec3 bbCol = mix(bbBull, bbBear, smoothstep(-0.5, 0.5, bbD));
 float bbNear = exp(-abs(bbD) * 0.3);
 bbCol *= 1.0 - 0.28 * bbNear * (0.6 + 0.4 * bbNoise(vBBWorld.xz * 2.3));
+// drifting cloud shadows
+float bbCloud = bbNoise(vBBWorld.xz * 0.022 + vec2(uTime * 0.018, uTime * 0.007)) * 0.7 + bbNoise(vBBWorld.xz * 0.06 - vec2(uTime * 0.01, 0.0)) * 0.3;
+bbCol *= 1.0 - uCloud * smoothstep(0.5, 0.72, bbCloud);
 diffuseColor.rgb *= bbCol;`,
         )
         .replace(
           '#include <emissivemap_fragment>',
           `#include <emissivemap_fragment>
 float bbLine = smoothstep(0.45, 0.0, abs(bbD));
+float bbPulse = pow(0.5 + 0.5 * sin(vBBWorld.z * 0.22 - uTime * 2.6), 10.0) + pow(0.5 + 0.5 * sin(-vBBWorld.z * 0.13 - uTime * 1.7 + 2.0), 14.0);
 vec3 bbSide = bbD < 0.0 ? vec3(0.25, 0.9, 0.45) : vec3(1.0, 0.3, 0.25);
-totalEmissiveRadiance += uLine * bbLine * uLineGlow + bbSide * exp(-abs(bbD) * 0.9) * 0.12 * uLineGlow;`,
+totalEmissiveRadiance += (uLine * (0.75 + bbPulse * 1.1) + uFlash) * bbLine * uLineGlow
+  + (bbSide * 0.09 * uLineGlow + uFlash * 0.18) * exp(-abs(bbD) * 0.9);`,
         );
     };
     const mesh = new THREE.Mesh(geo, mat);
@@ -216,6 +226,23 @@ totalEmissiveRadiance += uLine * bbLine * uLineGlow + bbSide * exp(-abs(bbD) * 0
     };
     const merged = mergeSimple([paint(trunk, new THREE.Color('#5a3d26')), paint(leaves, new THREE.Color('#ffffff'))]);
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
+    const uTime = this.uniforms.uTime;
+    const sway = (shader: { uniforms: Record<string, unknown>; vertexShader: string }) => {
+      shader.uniforms.uTime = uTime;
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;').replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+#ifdef USE_INSTANCING
+vec3 bbIp = instanceMatrix[3].xyz;
+#else
+vec3 bbIp = vec3(0.0);
+#endif
+float bbSway = (sin(uTime * 1.4 + bbIp.x * 0.21 + bbIp.z * 0.13) + 0.4 * sin(uTime * 3.1 + bbIp.z * 0.5)) * 0.07 * max(0.0, position.y - 0.7);
+transformed.x += bbSway;
+transformed.z += bbSway * 0.5;`,
+      );
+    };
+    mat.onBeforeCompile = sway;
     const max = 700;
     const mesh = new THREE.InstancedMesh(merged, mat, max);
     const m = new THREE.Matrix4();
@@ -289,7 +316,7 @@ function textPlane(text: string, w: number, h: number) {
   c.width = 512;
   c.height = Math.round((512 * h) / w);
   const g = c.getContext('2d')!;
-  g.font = `600 ${Math.round(c.height * 0.72)}px "Inter", "Helvetica Neue", Arial, sans-serif`;
+  g.font = `600 ${Math.round(c.height * 0.72)}px "Inter Variable", "Inter", "Helvetica Neue", Arial, sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillStyle = 'rgba(250,248,238,0.92)';

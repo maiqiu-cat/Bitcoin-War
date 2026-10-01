@@ -60,6 +60,7 @@ src/ui/         HUD、i18n 字典、格式化
 src/main.ts     装配与循环（250ms 逻辑 tick + 每帧渲染）
 tests/          Vitest；tests/fixtures/ 是 2026-10-01 抓到的真实交易所消息
 scripts/        verify-feeds.ts、screenshot.mjs、capture-fixtures.mjs
+deploy/         发布到 battle.ondream.ai：package.sh、push.sh、server/install.sh、nginx 模板、test/rehearse.sh（见 docs/handoff/deploy.md）
 verification/   脚本输出的报告（JSON 入库，PNG 不入库）
 docs/           全部开发文档（见 docs/README.md）
 ```
@@ -99,5 +100,6 @@ docs/           全部开发文档（见 docs/README.md）
 ## 8. 用户偏好
 
 - 用户用中文交流，回复用中文。
+- **生产服务器上同时跑着其他项目的多个站点。没有用户在当次会话里明确说「可以发布」，就不要改那台服务器上的任何文件或配置，也不要发布。** 只读检查（`date`、`hostname`、`preflight`）之前也先问一声。发布流程和安全机制见 [docs/handoff/deploy.md](docs/handoff/deploy.md)。
 - 这是独立的验证项目，和 `~/Documents/BTC SOLO Watcher`（BTC Watcher iOS App）是两个仓库，不要混着改。是否集成进 BTC Watcher 还没有决定，见 backlog 里的「待决问题」。
 - 2026-10-01 用户明确要求推送过一次，提交直接在 `main` 上，没有用 PR。以后要推送，先按你自己的规则确认是否获得授权。不要 force push。

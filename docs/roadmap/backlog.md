@@ -18,7 +18,7 @@
   - 通过一条 WS 下发三类数据：指数（几 Hz）、聚合深度分桶（2–4Hz）、事件流。
   - 前端把 `MarketHub` 的输入换成这条下发流，`src/game` 和 `src/render` 不用改。
 - [ ] **数据条款审查**：Coinbase、Kraken、OKX、Bybit、Bitstamp、Binance、Deribit 的行情再分发和展示条款。
-- [ ] **部署**：静态托管 `dist/`，加上域名和 HTTPS。
+- [ ] **部署到 battle.ondream.ai**：工具和演练已经完成（`deploy/`，见 [deploy.md](../handoff/deploy.md)）。还缺三件事：① SSH 打通② 用户确认可以发布 ③ 在 DNS 服务商加 `battle` 的 A 记录。
 
 ## P1：验证缺口和稳定性
 

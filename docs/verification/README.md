@@ -51,6 +51,7 @@
 | 2026-10-01（发布前复核） | `pnpm build`、`pnpm test` | 构建通过，40/40 单测通过 |
 | 2026-10-01（发布前复核） | `pnpm verify:feeds 60` | 6/6 PASS；5 家现货进入指数，Binance 451 属已知限制 |
 | 2026-10-01（发布前复核） | `pnpm verify:screens` | 11 张截图已人工检查；模拟与实盘场景约 60 FPS，中英文切换正常，0 个非预期运行时错误 |
+| 2026-10-01（生产验收） | `https://battle.ondream.ai/` | HTTPS 200、HTTP 301、首页 SHA 与本地构建一致；桌面 Chrome 4 家交易所进入指数、约 60 FPS、中英切换正常，0 个非预期错误；390px Chrome 模拟视口有文字重叠 |
 
 每次跑完有意义的验证，往这张表里加一行。
 
@@ -58,7 +59,7 @@
 
 - **实盘 BTC 爆仓**：从没在窗口内观察到。下次遇到行情波动大时，跑 `pnpm verify:feeds 300`，看「BTC liquidations seen」和流水里有没有 `liqShort/liqLong`，并核对 Bybit 的 `S` 语义。
 - **Binance**：只能在没有地区限制的网络下验证。
-- **移动端和低配设备**：没测过。
+- **移动端和低配设备**：390px Chrome 模拟视口可加载，但顶部控件和文字重叠；iPhone Safari、Android Chrome 真机以及低配设备未测。
 - **模拟行情不能逐帧复现**：同一个 seed 下，价格路径还受定时器交错顺序影响。需要确定性测试的话，把 SimFeed 改成由外部按步驱动。
 
 ## 5. 人工验收清单（改画面或 HUD 时逐项看）

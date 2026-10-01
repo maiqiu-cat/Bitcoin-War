@@ -7,18 +7,18 @@
 | # | 问题 | 背景 |
 | --- | --- | --- |
 | Q1 | 这个项目的去向：继续做独立的 Web 版、并入 BTC Watcher（App 里用 WKWebView 打开），还是只做验证？ | 可行性报告推荐的最快路径是 Go 后端聚合加 WKWebView。BTC Watcher 在另一个仓库（`~/Documents/BTC SOLO Watcher`） |
-| Q2 | 是否面向外部用户或商用？ | 决定了是否要确认各交易所的**数据再分发条款**，以及是否必须做服务端聚合 |
+| Q2 | 是否将公开演示版升级为正式产品或商用？ | 2026-10-01 已按用户确认发布纯前端演示版；正式版仍需确认各交易所的**数据再分发条款**并做服务端聚合 |
 | Q3 | 美术方向：继续程序化低多边形，还是购买或外包 glTF 资源？ | 这是和原版画面差距最大的地方，预计需要 2–4 周或购买资源包 |
 | Q4 | 要不要做原版里的 Market chat（市场聊天）？ | 需要账号、后端和内容审核 |
 
-## P0：上线前必须做（只要决定对外，就是 P0）
+## P0：正式版上线前必须做
 
 - [ ] **服务端聚合服务**（ADR 0002）：
   - 服务端负责连接各交易所、校验盘口（OKX、Kraken 的 checksum 和序列号）、统一计算指数。
   - 通过一条 WS 下发三类数据：指数（几 Hz）、聚合深度分桶（2–4Hz）、事件流。
   - 前端把 `MarketHub` 的输入换成这条下发流，`src/game` 和 `src/render` 不用改。
 - [ ] **数据条款审查**：Coinbase、Kraken、OKX、Bybit、Bitstamp、Binance、Deribit 的行情再分发和展示条款。
-- [ ] **部署到 battle.ondream.ai**：工具和演练已经完成（`deploy/`，见 [deploy.md](../handoff/deploy.md)）。SSH 已经打通（2026-10-01）。还缺两件事：① 用户确认可以发布 ② 在 DNS 服务商加 `battle` 的 A 记录。
+- [x] **公开演示版部署到 battle.ondream.ai**：2026-10-01 已完成，详情见 [session-log](../handoff/session-log.md)；此项不代表正式版的服务端聚合与数据条款审查完成。
 
 ## P1：验证缺口和稳定性
 
@@ -30,7 +30,7 @@
 
 ## P1：性能和适配
 
-- [ ] **移动端实测**：iPhone Safari、Android Chrome；按设备自动选 `q=low`。
+- [ ] **移动端适配与实测**：390px Chrome 模拟视口已确认顶部控件及部分文字重叠；修复布局后再测 iPhone Safari、Android Chrome，并按设备自动选 `q=low`。
 - [ ] **粒子只上传有效区间**：用 `BufferAttribute.addUpdateRange`。现在每帧上传 9000 个粒子的全部属性。
 - [ ] **远处单位 LOD**：改用点精灵或 billboard，以及按距离剔除。
 - [ ] **页面不可见时降频或暂停渲染**（`visibilitychange`）。
@@ -58,3 +58,4 @@
 | 截图验证的 FPS 会受同时打开的浏览器标签页影响 | 测量误差 | `verify:screens` |
 | 首个回合要等指数出来，约 1–2 秒，期间场上为空 | 体验 | `main.ts` |
 | HUD 是手写 DOM，状态同步靠 `applyLang()` 等手动调用 | 维护成本 | ADR 0001 |
+| 390px 移动视口里顶部价格、操作按钮和部分 HUD 文字重叠 | 公开演示版建议桌面浏览器使用；真机仍未验收 | `src/ui/` |

@@ -10,6 +10,7 @@
 - **二次清理**：审查发现公开文档里仍有描述维护者本机网络环境的措辞（一份 ADR、会话日志、AGENTS.md、运行手册、发布文档、演练脚本注释，以及两条提交信息）。全部改为中性措辞，相关短语加入本机敏感词清单，再次用 git-filter-repo 重写全部历史并删库重建；提交时间统一为 UTC。**所有提交哈希再次变化**，新旧对照见本机 `private/backup/commit-map-2.txt`。
 - **产品名**：用户定为「比特币战争」。页面标题（`app.title`）、manifest 的 `name`/`short_name` 与左上角品牌统一。
 - **非官方声明**：README 和 AGENTS.md 写明本项目是独立的非官方实现，与 Newhedge 无关联、未获认可。站点上的可见声明和与原版相同的英文界面文案，交给 Codex 处理（见审查报告 L-3）。
+- **仓库重建**：旧仓库 `Bitcoin-Battle` 由用户删除，新仓库改名为 `Bitcoin-War`（<https://github.com/maiqiu-cat/Bitcoin-War>，公开，关闭 Wiki）。文档里的当前链接和 `LICENSE.md` 的 Required Notice 已更新；旧链接失效。推送后给 `main` 开了分支保护（禁止强制推送和删除），打开 Dependabot 告警。从此提交时间统一为 UTC，`check:public` 会检查。
 - **没有做**：没有发布到生产；审查报告里的其余问题尚未修复。
 
 ---

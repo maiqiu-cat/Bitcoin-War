@@ -71,6 +71,8 @@ for c in $(git rev-list "$range"); do
   done
   ids=$(git log -1 --format='%ae%n%ce' "$c" | grep -v -E "$EMAIL_OK" || true)
   flag "commit $short identity (use a noreply e-mail)" "$ids"
+  tz=$(git log -1 --format='%ad%n%cd' --date=raw "$c" | awk '{print $2}' | grep -v -x '+0000' || true)
+  flag "commit $short dates carry a local timezone (commit with TZ=UTC; fix with --date and GIT_COMMITTER_DATE)" "$tz"
 done
 
 # 2. The HEAD tree as a whole (catches anything that predates the range).

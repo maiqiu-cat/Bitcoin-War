@@ -1,4 +1,4 @@
-Required Notice: Copyright 2026 maiqiu-cat (https://github.com/maiqiu-cat/Bitcoin-Battle)
+Required Notice: Copyright 2026 maiqiu-cat (https://github.com/maiqiu-cat/Bitcoin-War)
 
 # PolyForm Noncommercial License 1.0.0
 

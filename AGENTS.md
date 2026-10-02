@@ -15,7 +15,7 @@
 
 - 本地路径：`~/Documents/Bitcoin Battle`（目录名带空格，在 shell 里要加引号）
 - 许可：[PolyForm Noncommercial 1.0.0](LICENSE.md)，可以复制、分发、修改，不可以商用；第三方组件见 CREDITS.md。改许可证由用户决定
-- 远端：<https://github.com/maiqiu-cat/Bitcoin-Battle>（**公开**，`main`）。推送前必须通过 `pnpm check:public`，流程见 [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md)
+- 远端：<https://github.com/maiqiu-cat/Bitcoin-War>（**公开**，`main`）。推送前必须通过 `pnpm check:public`，流程见 [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md)
 
 ## 2. 阅读顺序
 
@@ -115,4 +115,4 @@ docs/           全部开发文档（见 docs/README.md）
 - **生产服务器上同时跑着其他项目的多个站点。没有用户在当次会话里明确说「可以发布」，就不要改那台服务器上的任何文件或配置，也不要发布。** 只读检查（`date`、`hostname`、`preflight`）之前也先问一声。发布流程和安全机制见 [docs/handoff/deploy.md](docs/handoff/deploy.md)；服务器参数和历次发布手册只在本机 `private/`。
 - **服务器和本机环境的细节只写进 `private/`，不要写进入库文件或提交信息**：服务器 IP、主机名或 SSH 别名、SSH 用户和密钥、内网/VPN 地址、同机其他站点和容器、系统与软件版本、云服务商和 DNS 服务商、本机网络配置。入库的示例用 `deploy/examples/` 里的文档专用地址。`scripts/git-hooks/`（`git config core.hooksPath scripts/git-hooks`）会在提交和推送时拦截这些内容，清单在本机 `private/deploy/forbidden-patterns.txt`；不要用 `--no-verify` 绕过。
 - 这是独立的验证项目，和 `~/Documents/BTC SOLO Watcher`（BTC Watcher iOS App）是两个仓库，不要混着改。是否集成进 BTC Watcher 还没有决定，见 backlog 里的「待决问题」。
-- 提交直接在 `main` 上，没有用 PR。**GitHub 仓库是公开的**：推送和生产发布都要用户在当次会话里分别明确授权，按 [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md) 执行，推送前 `pnpm check:public` 必须通过。不要 force push，不要推 `main` 以外的分支或 tag。2026-10-02 为清理敏感信息删库重建、历史全部重写，那是用户的一次性授权，不是先例。
+- 提交直接在 `main` 上，没有用 PR。**GitHub 仓库是公开的**：推送和生产发布都要用户在当次会话里分别明确授权，按 [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md) 执行，推送前 `pnpm check:public` 必须通过。不要 force push，不要推 `main` 以外的分支或 tag。提交时统一用 UTC（`TZ=UTC git commit …`）：历史里的提交时间已全部是 UTC，`pnpm check:public` 会拒绝带本机时区的提交。2026-10-02 为清理敏感信息删库重建、历史全部重写，那是用户的一次性授权，不是先例。

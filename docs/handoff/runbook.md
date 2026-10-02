@@ -15,7 +15,7 @@
 ## 从零开始
 
 ```bash
-git clone https://github.com/maiqiu-cat/Bitcoin-Battle.git "Bitcoin Battle"
+git clone https://github.com/maiqiu-cat/Bitcoin-War.git "Bitcoin Battle"
 cd "Bitcoin Battle"
 pnpm install          # 如果提示 Ignored build scripts: esbuild，检查 pnpm-workspace.yaml，然后 pnpm rebuild esbuild
 pnpm test && pnpm build
@@ -38,7 +38,8 @@ pnpm dev              # http://localhost:5173
 
 ## Git 和 GitHub
 
-- 远端：`origin = https://github.com/maiqiu-cat/Bitcoin-Battle.git`（**公开**），只有 `main` 分支。2026-10-02 删库重建、历史已重写，更早的 clone 和 `private/backup/` 里的 bundle 都是旧历史，不要从它们 pull 或 push。
+- 远端：`origin = https://github.com/maiqiu-cat/Bitcoin-War.git`（**公开**），只有 `main` 分支。2026-10-02 和 2026-10-03 两次删库重建、历史已重写，更早的 clone 和 `private/backup/` 里的 bundle 都是旧历史，不要从它们 pull 或 push。
+- 提交时用 `TZ=UTC git commit …`，提交记录不带本机时区（`check:public` 会检查）。
 - 提交信息用英文祈使句做标题，正文可以写中文要点，末尾带 agent 的 `Co-Authored-By`。
 - **不要提交**：`node_modules`、`dist`、`verification/*.png`、`tests/fixtures/_capture/`（都已加入 `.gitignore`）。
 - 新 clone 先执行 `git config core.hooksPath scripts/git-hooks`，并把 `user.email` 设成 GitHub noreply 地址。

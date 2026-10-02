@@ -1,6 +1,6 @@
 # Codex 操作手册：生产发布与 GitHub 公开仓库推送
 
-> **仓库 <https://github.com/maiqiu-cat/Bitcoin-Battle> 从 2026-10-02 起是公开的。** 推上去的每一样东西，包括文件、提交信息、作者邮箱和图片里的元数据，任何人都能看到，而且删不干净。
+> **仓库 <https://github.com/maiqiu-cat/Bitcoin-War> 从 2026-10-02 起是公开的。** 推上去的每一样东西，包括文件、提交信息、作者邮箱和图片里的元数据，任何人都能看到，而且删不干净。
 >
 > 本手册只写通用流程。服务器参数、服务器相关的排障和每次发布的具体手册只在本机 `private/`，不入库。
 
@@ -47,13 +47,13 @@ git config user.email 267608349+maiqiu-cat@users.noreply.github.com
 
 ```bash
 cd ~/Documents/Bitcoin\ Battle
-git status --short                 # 必须为空，未提交的改动先提交或说明
+git status --short                 # 必须为空，未提交的改动先提交或说明（提交用 TZ=UTC git commit …）
 git fetch origin
 git status -sb | head -1           # 只能是 ahead N，不能有 behind
 pnpm check:public                  # 最后一行必须是 check-public: OK (...)
 git push origin main               # pre-push 钩子会再检查一次这次推送的范围
 git ls-remote origin refs/heads/main   # 必须等于 git rev-parse HEAD
-gh repo view maiqiu-cat/Bitcoin-Battle --json visibility,defaultBranchRef
+gh repo view maiqiu-cat/Bitcoin-War --json visibility,defaultBranchRef
 ```
 
 - **出现 behind**（用户在网页上改过东西）：远端是干净的历史，用 `git pull --rebase origin main` 把本地未推送的提交接到后面，再从 `check:public` 重新开始。
@@ -67,7 +67,7 @@ gh repo view maiqiu-cat/Bitcoin-Battle --json visibility,defaultBranchRef
 
 ```bash
 P="$PWD/private/deploy/forbidden-patterns.txt"; T=$(mktemp -d)
-git clone -q https://github.com/maiqiu-cat/Bitcoin-Battle.git "$T/bb"
+git clone -q https://github.com/maiqiu-cat/Bitcoin-War.git "$T/bb"
 (cd "$T/bb" && PUBLIC_CHECK_PATTERNS="$P" scripts/check-public.sh --all)   # check-public: OK
 rm -rf "$T"
 ```

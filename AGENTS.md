@@ -14,7 +14,7 @@
 技术栈：Vite 8、TypeScript 7（strict）、Three.js 0.186，纯前端，没有后端。界面支持中文和英文。
 
 - 本地路径：`~/Documents/Bitcoin Battle`（目录名带空格，在 shell 里要加引号）
-- 远端：<https://github.com/maiqiu-cat/Bitcoin-Battle>（私有，`main`）
+- 远端：<https://github.com/maiqiu-cat/Bitcoin-Battle>（**公开**，`main`）。推送前必须通过 `pnpm check:public`，流程见 [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md)
 
 ## 2. 阅读顺序
 
@@ -31,6 +31,7 @@
 | 改画面或性能 | [docs/rendering/visual-system.md](docs/rendering/visual-system.md) |
 | 改 HUD 或多语言 | [docs/ui/hud-and-i18n.md](docs/ui/hud-and-i18n.md) |
 | 改完怎么验收 | [docs/verification/README.md](docs/verification/README.md) |
+| 生产发布、推送 GitHub | [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md)（Codex 操作手册） |
 
 全部文档索引：[docs/README.md](docs/README.md)
 
@@ -63,7 +64,7 @@ src/audio/      音频引擎；src/audio/assets/ 是预渲染的配乐和音效�
 tools/audio/    生成配乐和音效的 Python 管线（MuseScore_General 音色库，MIT），见 tools/audio/README.md
 src/main.ts     装配与循环（250ms 逻辑 tick + 每帧渲染）
 tests/          Vitest；tests/fixtures/ 是 2026-10-01 抓到的真实交易所消息
-scripts/        verify-feeds.ts、screenshot.mjs、capture-fixtures.mjs
+scripts/        verify-feeds.ts、screenshot.mjs、capture-fixtures.mjs、check-public.sh（推送前的敏感信息检查）、git-hooks/（core.hooksPath）
 deploy/         发布到 battle.ondream.ai：package.sh、push.sh、render-nginx.sh、server/install.sh、nginx 模板、examples/、test/rehearse.sh（见 docs/handoff/deploy.md）
 private/        仅本机、不入库（.gitignore）：服务器参数、发布手册、清理前的历史备份（见 docs/handoff/deploy.md）
 verification/   脚本输出的报告（JSON 入库，PNG 不入库）
@@ -111,6 +112,6 @@ docs/           全部开发文档（见 docs/README.md）
 
 - 用户用中文交流，回复用中文。
 - **生产服务器上同时跑着其他项目的多个站点。没有用户在当次会话里明确说「可以发布」，就不要改那台服务器上的任何文件或配置，也不要发布。** 只读检查（`date`、`hostname`、`preflight`）之前也先问一声。发布流程和安全机制见 [docs/handoff/deploy.md](docs/handoff/deploy.md)；服务器参数和历次发布手册只在本机 `private/`。
-- **服务器和本机环境的细节只写进 `private/`，不要写进入库文件或提交信息**：服务器 IP、主机名或 SSH 别名、SSH 用户和密钥、内网/VPN 地址、同机其他站点和容器、系统与软件版本、云服务商和 DNS 服务商、本机网络配置。入库的示例用 `deploy/examples/` 里的文档专用地址。本机 `.git/hooks/` 里的钩子会拦截这些内容，不要用 `--no-verify` 绕过。
+- **服务器和本机环境的细节只写进 `private/`，不要写进入库文件或提交信息**：服务器 IP、主机名或 SSH 别名、SSH 用户和密钥、内网/VPN 地址、同机其他站点和容器、系统与软件版本、云服务商和 DNS 服务商、本机网络配置。入库的示例用 `deploy/examples/` 里的文档专用地址。`scripts/git-hooks/`（`git config core.hooksPath scripts/git-hooks`）会在提交和推送时拦截这些内容，清单在本机 `private/deploy/forbidden-patterns.txt`；不要用 `--no-verify` 绕过。
 - 这是独立的验证项目，和 `~/Documents/BTC SOLO Watcher`（BTC Watcher iOS App）是两个仓库，不要混着改。是否集成进 BTC Watcher 还没有决定，见 backlog 里的「待决问题」。
-- 2026-10-01 用户明确要求推送过一次，提交直接在 `main` 上，没有用 PR。以后要推送，先按你自己的规则确认是否获得授权。不要 force push。
+- 提交直接在 `main` 上，没有用 PR。**GitHub 仓库是公开的**：推送和生产发布都要用户在当次会话里分别明确授权，按 [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md) 执行，推送前 `pnpm check:public` 必须通过。不要 force push，不要推 `main` 以外的分支或 tag。2026-10-02 为清理敏感信息删库重建、历史全部重写，那是用户的一次性授权，不是先例。

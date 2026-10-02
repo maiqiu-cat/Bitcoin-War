@@ -38,10 +38,11 @@ pnpm dev              # http://localhost:5173
 
 ## Git 和 GitHub
 
-- 远端：`origin = https://github.com/maiqiu-cat/Bitcoin-Battle.git`（私有），只有 `main` 分支。
+- 远端：`origin = https://github.com/maiqiu-cat/Bitcoin-Battle.git`（**公开**），只有 `main` 分支。2026-10-02 删库重建、历史已重写，更早的 clone 和 `private/backup/` 里的 bundle 都是旧历史，不要从它们 pull 或 push。
 - 提交信息用英文祈使句做标题，正文可以写中文要点，末尾带 agent 的 `Co-Authored-By`。
 - **不要提交**：`node_modules`、`dist`、`verification/*.png`、`tests/fixtures/_capture/`（都已加入 `.gitignore`）。
-- 不要 force push。是否推送，按会话里用户的授权决定（见 AGENTS.md 第 8 节）。
+- 新 clone 先执行 `git config core.hooksPath scripts/git-hooks`，并把 `user.email` 设成 GitHub noreply 地址。
+- 推送前 `pnpm check:public`；不要 force push。是否推送，按会话里用户的授权决定（见 AGENTS.md 第 8 节和 [release-and-publish.md](release-and-publish.md)）。
 
 ## 排障
 

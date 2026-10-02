@@ -4,15 +4,19 @@
 
 ---
 
-## 2026-10-02 · 会话 13：把服务器和本机环境信息移出仓库（含历史）
+## 2026-10-02 · 会话 13：把服务器和本机环境信息移出仓库（含历史），重建为公开仓库
 
 - 用户要求：GitHub 私有仓库里也不保留敏感信息，只留在本机。
 - 检查范围：全部文件、全部 19 个提交（含已删除的文件、提交信息、作者邮箱）。没有密钥、token、密码；要清理的是生产服务器信息（IP、SSH 方式、内网/VPN 地址、同机站点和容器、系统版本、云服务商和 DNS 服务商）、本机网络配置、作者邮箱里的本机主机名和个人邮箱，以及第三方参考帧。
 - 新增本机专用目录 `private/`（已加入 `.gitignore`，说明见 `private/README.md`）：服务器参数 `private/deploy/`，首次发布审计和 Codex 发布手册 `private/docs/handoff/`，参考帧 `private/research/newhedge-frames/`，清理前的完整备份 `private/backup/`。
 - 部署脚本参数化：`push.sh` 和 `package.sh` 读取 `private/deploy/site.env`；HTTPS 的 `listen` 行由新增的 `deploy/render-nginx.sh` 从 `private/deploy/https-listen.conf` 填进模板；`install.sh` 从发布包里的 `site.env` 读取 `EXPECT_IP`。示例和演练改用 `deploy/examples/` 里的 RFC 5737 文档专用地址。
-- 文档删去服务器细节，`AGENTS.md` 增加「服务器和本机环境细节只写进 `private/`」的规则。本机 `.git/hooks/pre-commit` 和 `commit-msg` 按 `private/deploy/forbidden-patterns.txt` 拦截；作者邮箱改为 GitHub noreply（仓库级 `user.email`）。
+- 文档删去服务器细节，`AGENTS.md` 增加「服务器和本机环境细节只写进 `private/`」的规则。`pre-commit` 和 `commit-msg` 钩子按本机 `private/deploy/forbidden-patterns.txt` 拦截；作者邮箱改为 GitHub noreply（仓库级 `user.email`）。
 - 用 git-filter-repo 重写全部历史：删除首次发布审计、发布手册和参考帧；替换历史文件和提交信息里的敏感字符串；作者邮箱统一为 noreply。**所有提交哈希都变了**，新旧对照见 `private/backup/commit-map.txt`。文档里的提交哈希已换成新哈希；发布版本号（如 `20261002-0335-4f903d9`）是服务器上的目录名，保持原样。
 - 验证：`pnpm test` 52/52；测试发布包与线上 `20261002-0335-4f903d9` 相比，网站文件和两份 Nginx 配置逐字节相同（渲染后的 HTTPS 配置 SHA-256 `9f5a4f3f…`，与线上一致，下次发布仍然不重载 Nginx）；`install.sh` 只有注释和 `EXPECT_IP` 的读取方式有变化；Docker 演练 `REHEARSAL PASSED`（35 项检查）；测试包已删除。重写后对全部历史做了敏感字符串扫描。
+- 用户手动删除了原来的私有仓库，并决定改为公开：以 public 重建 `maiqiu-cat/Bitcoin-Battle`（沿用原描述，关闭 Wiki），推送清理后的 `main`，包括其他会话同时提交的网站图标（`Add the Bitcoin Battle logo as site icons`）。
+- 新增推送闸门 `scripts/check-public.sh`（`pnpm check:public`，`--all` 查全部历史）：逐个提交检查改动、提交信息、新增二进制文件、作者和提交者邮箱，再查 HEAD 文件树；敏感清单只在本机，缺失时直接判失败。用旧历史 bundle 和人为植入的 IP、邮箱测试过，都能拦下。
+- 钩子改为入库的 `scripts/git-hooks/`（`pre-commit`、`commit-msg`、`pre-push`；每个 clone 执行一次 `git config core.hooksPath scripts/git-hooks`）。`pre-push` 只允许推 `main`，并对推送范围运行闸门。
+- 新增 Codex 操作手册 [release-and-publish.md](release-and-publish.md)：授权与红线、三道防线、推送步骤、生产发布步骤、停止条件、汇报模板。私有手册的用法写在本机 `private/docs/handoff/README.md`。
 - **没有做**：没有连接或改动生产服务器。
 
 ---

@@ -90,7 +90,7 @@ git log --oneline -3
 git diff --stat <上次发布的源码提交> HEAD -- deploy/   # 有改动则 3.3 的 Docker 演练必须做
 ```
 
-- 2026-10-02 之后的第一次发布，`deploy/` 一定有改动（服务器参数移出仓库、新增 `render-nginx.sh`）：演练必须做。上次发布的源码提交是 `758e78b`（版本 `20261002-0335-4f903d9`，版本号里是重写前的旧哈希）。
+- 上次发布的源码提交和版本号见 [deploy.md](deploy.md) 顶部状态。`git diff --stat <上次发布的源码提交> HEAD -- deploy/` 有改动时，3.3 的 Docker 演练必须做；没有改动也建议做。
 - SSH 不通：**停下**，排障见 `private/docs/handoff/deploy.md`。不要改本机网络配置。
 
 ### 3.2 打包

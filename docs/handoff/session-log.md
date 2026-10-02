@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-10-02 · 会话 18：作者 X 链接发布
+
+- 用户授权按本机手册发布，并单独授权推送发布记录。发布前确认本地与 GitHub `main` 均为 `c999c6c`，`deploy/` 自上版未改。由干净提交打包 `20261002-1153-c999c6c`，发布包 SHA-256 `d1383c47b6b5660a79839d6c0b984ae434ec96e73fa37594b053f3774de25569`；包内头像与仓库哈希一致，上版图标和 36 个音频保留。
+- 发布前备份当前 Battle 站点和配置，并完成解包恢复检查。本机 `pnpm test` 58/58、`verify:mobile` 24/24、`verify:screens` 约 60 FPS 且无非预期运行时错误；重点截图已检查。Docker 演练 `REHEARSAL PASSED`。
+- 生产配置与包内模板哈希一致；`preflight`、发布前后 `audit` 均通过。部署只切换 `current`，Nginx 未重载；审计差异仅为 `current / previous / releases`。公网首页 SHA-256 与发布包同为 `650dad055ef1bcc3d0c36309ddf393674763112725b143bd3554e466062ac9c4`。
+- 线上 `x-avatar.jpg` 返回 `200 image/jpeg`，SHA-256 `fdc97f2a294476409f54a2ffbd2f8d2f27d406196c08c8fbb34183c6463d1dc1`，内容与发布包一致。线上布局抽查 8/8；正常页面 20 秒无网络误提示，价格持续更新。在 Chrome 点击 X 链接后，目标个人主页于新标签页加载，原页面保持不变；头像、昵称、悬停提示和读屏文字正确。手机真机的位置、样式及点击效果仍请用户确认。
+
+---
+
 ## 2026-10-02 · 会话 17：作者 X 链接（未发布）
 
 - 用户要求在界面合适的位置加上 X 链接 `https://x.com/MagicPower21M`，用该账号的头像和昵称。昵称「MagicPower ⚡」、头像通过 fxtwitter 公开接口取得；头像 200×200 JPEG（15KB，无元数据）存为 `public/x-avatar.jpg`，不引用 X 的图片服务器（ADR 0008）。

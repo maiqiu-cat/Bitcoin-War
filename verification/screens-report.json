@@ -1,5 +1,5 @@
 {
- "at": "2026-10-02T11:39:47.807Z",
+ "at": "2026-10-02T11:55:36.464Z",
  "runs": [
   {
    "name": "sim",
@@ -11,14 +11,14 @@
      "path": "verification/sim-1-overview.png",
      "stats": {
       "fps": 60,
-      "frames": 557,
-      "layoutUnits": 735,
+      "frames": 558,
+      "layoutUnits": 733,
       "army": {
-       "soldiers": 713,
+       "soldiers": 711,
        "tanks": 22,
-       "total": 847
+       "total": 816
       },
-      "index": 84168.16,
+      "index": 84225.86,
       "venuesInIndex": [
        "sim"
       ],
@@ -27,11 +27,11 @@
        "startPrice": 84207.06999672546,
        "bearsWinAt": 83996.55,
        "bullsWinAt": 84417.59,
-       "startedAt": 1790941188227
+       "startedAt": 1790942136888
       },
-      "feedItems": 18,
+      "feedItems": 14,
       "status": "大军正开赴前线",
-      "shot": "frontline",
+      "shot": "event",
       "banner": "战斗开始",
       "lang": "zh-CN",
       "caption": "BTC/USD · 跨交易所聚合现货",
@@ -44,14 +44,14 @@
      "path": "verification/sim-2-front-closeup.png",
      "stats": {
       "fps": 60,
-      "frames": 842,
-      "layoutUnits": 728,
+      "frames": 845,
+      "layoutUnits": 739,
       "army": {
-       "soldiers": 705,
+       "soldiers": 717,
        "tanks": 22,
-       "total": 854
+       "total": 844
       },
-      "index": 84246.53,
+      "index": 84202.22,
       "venuesInIndex": [
        "sim"
       ],
@@ -60,11 +60,11 @@
        "startPrice": 84207.06999672546,
        "bearsWinAt": 83996.55,
        "bullsWinAt": 84417.59,
-       "startedAt": 1790941188227
+       "startedAt": 1790942136888
       },
-      "feedItems": 27,
-      "status": "大军正开赴前线",
-      "shot": "frontline",
+      "feedItems": 20,
+      "status": "前线零星交火",
+      "shot": "event",
       "banner": "战斗开始",
       "lang": "zh-CN",
       "caption": "BTC/USD · 跨交易所聚合现货",
@@ -77,14 +77,14 @@
      "path": "verification/sim-3-wide.png",
      "stats": {
       "fps": 60,
-      "frames": 976,
-      "layoutUnits": 697,
+      "frames": 980,
+      "layoutUnits": 725,
       "army": {
-       "soldiers": 678,
-       "tanks": 19,
-       "total": 902
+       "soldiers": 703,
+       "tanks": 22,
+       "total": 829
       },
-      "index": 84309.5,
+      "index": 84191.74,
       "venuesInIndex": [
        "sim"
       ],
@@ -93,11 +93,11 @@
        "startPrice": 84207.06999672546,
        "bearsWinAt": 83996.55,
        "bullsWinAt": 84417.59,
-       "startedAt": 1790941188227
+       "startedAt": 1790942136888
       },
-      "feedItems": 30,
-      "status": "牛军稳步推进",
-      "shot": "frontline",
+      "feedItems": 22,
+      "status": "前线零星交火",
+      "shot": "event",
       "banner": "战斗开始",
       "lang": "zh-CN",
       "caption": "BTC/USD · 跨交易所聚合现货",
@@ -110,14 +110,14 @@
      "path": "verification/sim-4-night.png",
      "stats": {
       "fps": 60,
-      "frames": 1112,
-      "layoutUnits": 715,
+      "frames": 1115,
+      "layoutUnits": 726,
       "army": {
-       "soldiers": 696,
-       "tanks": 19,
-       "total": 816
+       "soldiers": 703,
+       "tanks": 22,
+       "total": 831
       },
-      "index": 84307.19,
+      "index": 84225.49,
       "venuesInIndex": [
        "sim"
       ],
@@ -126,11 +126,11 @@
        "startPrice": 84207.06999672546,
        "bearsWinAt": 83996.55,
        "bullsWinAt": 84417.59,
-       "startedAt": 1790941188227
+       "startedAt": 1790942136888
       },
-      "feedItems": 32,
+      "feedItems": 25,
       "status": "牛军稳步推进",
-      "shot": "frontline",
+      "shot": "event",
       "banner": "战斗开始",
       "lang": "zh-CN",
       "caption": "BTC/USD · 跨交易所聚合现货",
@@ -143,14 +143,14 @@
      "path": "verification/sim-5-later-round.png",
      "stats": {
       "fps": 60,
-      "frames": 1548,
-      "layoutUnits": 723,
+      "frames": 1551,
+      "layoutUnits": 680,
       "army": {
-       "soldiers": 704,
+       "soldiers": 661,
        "tanks": 19,
-       "total": 833
+       "total": 785
       },
-      "index": 84339.65,
+      "index": 84255.76,
       "venuesInIndex": [
        "sim"
       ],
@@ -159,11 +159,11 @@
        "startPrice": 84207.06999672546,
        "bearsWinAt": 83996.55,
        "bullsWinAt": 84417.59,
-       "startedAt": 1790941188227
+       "startedAt": 1790942136888
       },
-      "feedItems": 44,
+      "feedItems": 37,
       "status": "牛军稳步推进",
-      "shot": "frontline",
+      "shot": "event",
       "banner": "战斗开始",
       "lang": "zh-CN",
       "caption": "BTC/USD · 跨交易所聚合现货",
@@ -184,7 +184,7 @@
      "path": "verification/sim-rounds-1-win.png",
      "stats": {
       "fps": 60,
-      "frames": 869,
+      "frames": 867,
       "layoutUnits": 966,
       "army": {
        "soldiers": 938,
@@ -200,11 +200,11 @@
        "startPrice": 84196.37160538265,
        "bearsWinAt": 84145.85,
        "bullsWinAt": 84246.89,
-       "startedAt": 1790941214228,
+       "startedAt": 1790942163005,
        "winner": "bears",
-       "endedAt": 1790941226977
+       "endedAt": 1790942175754
       },
-      "feedItems": 27,
+      "feedItems": 24,
       "status": "熊军猛攻牛方大本营",
       "shot": "frontline",
       "banner": "熊方胜利",
@@ -221,7 +221,7 @@
      "path": "verification/sim-rounds-2-next-round.png",
      "stats": {
       "fps": 60,
-      "frames": 1246,
+      "frames": 1244,
       "layoutUnits": 857,
       "army": {
        "soldiers": 838,
@@ -237,11 +237,11 @@
        "startPrice": 84373.3823967172,
        "bearsWinAt": 84322.76,
        "bullsWinAt": 84424.01,
-       "startedAt": 1790941232977,
+       "startedAt": 1790942181754,
        "winner": "bulls",
-       "endedAt": 1790941234727
+       "endedAt": 1790942183504
       },
-      "feedItems": 36,
+      "feedItems": 31,
       "status": "大军正开赴前线",
       "shot": "frontline",
       "banner": "牛方胜利",
@@ -267,14 +267,14 @@
      "path": "verification/live-1-overview.png",
      "stats": {
       "fps": 60,
-      "frames": 976,
-      "layoutUnits": 2168,
+      "frames": 974,
+      "layoutUnits": 2450,
       "army": {
-       "soldiers": 2084,
-       "tanks": 82,
-       "total": 2283
+       "soldiers": 2354,
+       "tanks": 96,
+       "total": 2552
       },
-      "index": 86450.5,
+      "index": 86425.99,
       "venuesInIndex": [
        "coinbase",
        "kraken",
@@ -284,12 +284,12 @@
       ],
       "round": {
        "id": 1,
-       "startPrice": 86465.21,
-       "bearsWinAt": 86249.05,
-       "bullsWinAt": 86681.37,
-       "startedAt": 1790941236406
+       "startPrice": 86438.25,
+       "bearsWinAt": 86222.15000000001,
+       "bullsWinAt": 86654.35,
+       "startedAt": 1790942185172
       },
-      "feedItems": 3,
+      "feedItems": 0,
       "status": "Skirmishes along the front",
       "shot": "frontline",
       "banner": "BATTLE BEGINS",
@@ -304,14 +304,14 @@
      "path": "verification/live-2-front-closeup.png",
      "stats": {
       "fps": 60,
-      "frames": 1261,
-      "layoutUnits": 2100,
+      "frames": 1258,
+      "layoutUnits": 2413,
       "army": {
-       "soldiers": 2012,
-       "tanks": 88,
-       "total": 2150
+       "soldiers": 2318,
+       "tanks": 95,
+       "total": 2582
       },
-      "index": 86446.34,
+      "index": 86429.54,
       "venuesInIndex": [
        "coinbase",
        "kraken",
@@ -321,13 +321,13 @@
       ],
       "round": {
        "id": 1,
-       "startPrice": 86465.21,
-       "bearsWinAt": 86249.05,
-       "bullsWinAt": 86681.37,
-       "startedAt": 1790941236406
+       "startPrice": 86438.25,
+       "bearsWinAt": 86222.15000000001,
+       "bullsWinAt": 86654.35,
+       "startedAt": 1790942185172
       },
-      "feedItems": 4,
-      "status": "Bears charging",
+      "feedItems": 0,
+      "status": "Skirmishes along the front",
       "shot": "charge",
       "banner": "BATTLE BEGINS",
       "lang": "en",
@@ -341,14 +341,14 @@
      "path": "verification/live-3-day.png",
      "stats": {
       "fps": 60,
-      "frames": 1429,
-      "layoutUnits": 2122,
+      "frames": 1426,
+      "layoutUnits": 2383,
       "army": {
-       "soldiers": 2035,
-       "tanks": 87,
-       "total": 2152
+       "soldiers": 2287,
+       "tanks": 96,
+       "total": 2583
       },
-      "index": 86445.66,
+      "index": 86430.01,
       "venuesInIndex": [
        "coinbase",
        "kraken",
@@ -358,13 +358,13 @@
       ],
       "round": {
        "id": 1,
-       "startPrice": 86465.21,
-       "bearsWinAt": 86249.05,
-       "bullsWinAt": 86681.37,
-       "startedAt": 1790941236406
+       "startPrice": 86438.25,
+       "bearsWinAt": 86222.15000000001,
+       "bullsWinAt": 86654.35,
+       "startedAt": 1790942185172
       },
-      "feedItems": 4,
-      "status": "Bears charging",
+      "feedItems": 0,
+      "status": "Skirmishes along the front",
       "shot": "charge",
       "banner": "BATTLE BEGINS",
       "lang": "en",
@@ -378,14 +378,14 @@
      "path": "verification/live-4-lang-toggle.png",
      "stats": {
       "fps": 60,
-      "frames": 1508,
-      "layoutUnits": 2135,
+      "frames": 1502,
+      "layoutUnits": 2413,
       "army": {
-       "soldiers": 2047,
-       "tanks": 87,
-       "total": 2177
+       "soldiers": 2317,
+       "tanks": 96,
+       "total": 2467
       },
-      "index": 86445.63,
+      "index": 86431.34,
       "venuesInIndex": [
        "coinbase",
        "kraken",
@@ -395,13 +395,13 @@
       ],
       "round": {
        "id": 1,
-       "startPrice": 86465.21,
-       "bearsWinAt": 86249.05,
-       "bullsWinAt": 86681.37,
-       "startedAt": 1790941236406
+       "startPrice": 86438.25,
+       "bearsWinAt": 86222.15000000001,
+       "bullsWinAt": 86654.35,
+       "startedAt": 1790942185172
       },
-      "feedItems": 4,
-      "status": "熊军试探防线",
+      "feedItems": 0,
+      "status": "前线零星交火",
       "shot": "charge",
       "banner": "战斗开始",
       "lang": "zh-CN",

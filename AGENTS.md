@@ -46,6 +46,7 @@ pnpm verify:feeds [秒]         # Node 里跑真实交易所连接并做断言�
 pnpm verify:screens            # 先 build；无头 Chrome 截图，收集 FPS 和报错
 pnpm capture:fixtures [秒]     # 抓真实消息到 tests/fixtures/_capture/（不覆盖现有夹具）
 pnpm build && pnpm verify:audio  # 音频检查：自动播放、点击解锁、平静/激战/胜利切换、M 键、离线渲染试听
+pnpm build && pnpm verify:mobile # 12 种手机/平板/电脑尺寸 × 中英文：HUD 互不遮挡、不出界、文字不溢出
 ```
 
 - macOS 没有 `timeout` 命令。需要给命令限时的话，用 `perl -e 'alarm 120; exec @ARGV' <cmd>`。
@@ -89,6 +90,7 @@ docs/           全部开发文档（见 docs/README.md）
 3. 动了渲染或 HUD：`pnpm build && pnpm verify:screens`，然后**亲自看** `verification/*.png`。报告里的 FPS 和单位数要合理，并且没有「非预期」运行时错误。Binance 451 属于预期内，已被脚本过滤。
 4. 动了数据层：`pnpm verify:feeds 60`，6 项检查全部 PASS。
 4b. 动了音频：`pnpm build && pnpm verify:audio` 全部 PASS，并且听一下 `verification/audio-preview.wav`。
+4c. 动了 HUD 或样式：`pnpm build && pnpm verify:mobile` 全部 PASS，并亲自看 `verification/mobile/` 里至少手机竖屏、横屏各一张。
 5. 更新 [docs/handoff/session-log.md](docs/handoff/session-log.md)；有新的待办或已知问题，写进 [docs/roadmap/backlog.md](docs/roadmap/backlog.md)。
 
 ## 7. 环境陷阱（已踩过）

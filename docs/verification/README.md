@@ -9,6 +9,7 @@
 | `pnpm verify:feeds [秒]` | 用 Node 连真实交易所跑 N 秒（默认 45），输出每家的连接次数、断线、消息数、成交数、盘口档数、价差、相对指数的偏差和权重，并做 6 项断言 | 6 项全部 PASS；报告写入 `verification/feeds-report.json` | N 秒 |
 | `pnpm build && pnpm verify:screens` | 启动 vite preview，在无头 Chrome（1600×900）里跑 4 组场景并截图；收集 FPS、单位数、指数、回合、横幅、语言和报错 | 输出 `No runtime errors`（Binance 的 451 和 fstream 报错属于预期，已过滤），FPS 和单位数合理，**人工看过截图**；报告在 `verification/screens-report.json` | 约 2 分钟 |
 | `pnpm build && pnpm verify:audio` | 无头 Chrome，分三部分：A 允许自动播放时不用点击就出声；B0 喇叭按钮首次解锁、静音与恢复；B1–B7 拦截时提示、点击后出声、激战与胜利切换、M 键、无错误；C 用真实资源离线渲染 36 秒场景（`verification/audio-preview.wav`，不入库），要求不爆音、爆炸比配乐底层高 ≥8 dB | 全部 PASS，并且人工听一遍；公网较慢时还须排除模拟行情状态变化造成的假阴性 | 约 1 分钟 |
+| `pnpm build && pnpm verify:mobile` | 无头 Chrome，12 种视口（手机竖屏 5 种含浏览器地址栏后的实际可用高度、手机横屏 3 种、iPad 竖横、1280 笔记本、1440 桌面）× 中英文；先塞满 8 条市场动态和 6 家交易所、再弹出开场横幅，测最拥挤的情况。`MOBILE_CHECK_URL=https://battle.ondream.ai` 可直接查线上，`MOBILE_CHECK_ONLY=iphone,landscape` 只跑部分视口（不写报告） | 输出 `MOBILE LAYOUT CHECKS PASSED (24)`：各 HUD 块互不重叠、都在屏幕内、页面不能横向滚动、没有文字溢出、动态标签宽度 ≥24px、深度轴三个价格间距 ≥4px、无运行时错误；**人工看过** `verification/mobile/*.jpg`；报告在 `verification/mobile-report.json` | 约 2 分钟 |
 | `pnpm capture:fixtures [秒]` | 抓真实消息到 `tests/fixtures/_capture/`（已加入 gitignore） | 各交易所都有样本 | N 秒 |
 
 ### `verify:feeds` 的 6 项断言
@@ -61,13 +62,16 @@
 | 2026-10-02（音频版发布前） | `pnpm build`、`pnpm test`、`pnpm verify:audio`、`pnpm verify:screens` | 构建通过，52/52 单测通过；音频 A、B0/B0a/B0b、B1–B7、C1–C3 全部 PASS，36 个资源加载、峰值 0.8282，爆炸高于配乐 16.2 dB；11 张截图已检查，约 59–60 FPS，0 个非预期运行时错误 |
 | 2026-10-02（生产音频版） | `battle.ondream.ai` 与 `verify:audio` | 版本 `20261001-1541-de01e82`；HTTPS 首页哈希与发布包一致，音频资源 200 + immutable，发布前后 `audit` 均通过。原版线上脚本 A/B2/B3 因模拟行情在资源加载期间进入激战/胜利而失败，其余项通过，0 个运行时错误；低速宽回合的线上受控复核通过 36 个资源、首次点喇叭、平静→激战→胜利、M 键和画面，见 `verification/audio-report-production-controlled.json`。主观听感待用户真机验收 |
 
+| 2026-10-02（手机布局） | `pnpm verify:mobile`（修改前，即线上 `20261001-1541-de01e82` 的样式） | 24 个组合 19 个失败：手机竖屏菜单盖住标题、价格和涨跌幅，声音提示压住两个底部面板，动态类型文字被挤到 2px，深度轴价格连成一串；手机横屏几乎全部互相重叠；iPad 竖屏菜单盖住价格；iPad 横屏英文左上面板压到战况条 |
+| 2026-10-02（手机布局） | `pnpm verify:mobile`、`pnpm test`、`pnpm build`、`verify:audio`、`verify:screens` | 24/24 PASS；手机竖屏、横屏、iPad 截图已人工检查；52/52 单测；音频全部 PASS（B0 在 800×600 紧凑布局下点喇叭仍正常）；桌面 11 张截图 60 FPS、0 个非预期错误，布局与修改前一致 |
+
 每次跑完有意义的验证，往这张表里加一行。
 
 ## 4. 已知的验证缺口
 
 - **实盘 BTC 爆仓**：从没在窗口内观察到。下次遇到行情波动大时，跑 `pnpm verify:feeds 300`，看「BTC liquidations seen」和流水里有没有 `liqShort/liqLong`，并核对 Bybit 的 `S` 语义。
 - **Binance**：只能在没有地区限制的网络下验证。
-- **移动端和低配设备**：390px Chrome 模拟视口可加载，但顶部控件和文字重叠；iPhone Safari、Android Chrome 真机以及低配设备未测。
+- **移动端和低配设备**：布局已由 `verify:mobile` 覆盖（2026-10-02 起全部通过），但真机只有用户 iPhone Chrome 的一张截图（修改前）；iPhone Safari、Android Chrome 真机的性能、触控和发热，以及低配设备均未测。
 - **模拟行情不能逐帧复现**：同一个 seed 下，价格路径还受定时器交错顺序影响。需要确定性测试的话，把 SimFeed 改成由外部按步驱动。
 - **线上 `verify:audio` 的时间依赖**：A/B2/B3 目前要求恰好处于平静或激战；公网资源加载慢时，模拟回合可能已经切到胜利。固定行情状态后再做断言，避免产品正常却报告失败。
 

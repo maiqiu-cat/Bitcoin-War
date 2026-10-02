@@ -66,6 +66,7 @@ const hud = new Hud(document.getElementById('hud')!, simMode ? 'sim' : 'live', {
   onSound: () => audio.state === 'locked' ? audio.unlock() : audio.toggle(),
 });
 audio.onState = (s) => hud.setSound(s);
+world.labelObstacles = () => hud.obstacles();
 hud.setSound(audio.state);
 hud.setLightingValue(lightingChoice);
 hud.setCinematic(world.rig.cinematic);
@@ -222,4 +223,4 @@ function frame(t: number) {
 requestAnimationFrame(frame);
 
 // Debug/verification hook (used by scripts/screenshot.mjs).
-Object.assign(window, { __bb: { hub, battle, world, stats, sim: simMode, army: () => world.army.stats, audio, renderPreview } });
+Object.assign(window, { __bb: { hub, battle, world, hud, stats, sim: simMode, army: () => world.army.stats, audio, renderPreview } });

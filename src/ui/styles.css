@@ -24,6 +24,9 @@ body {
   color: var(--text);
   font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* iOS would otherwise enlarge text when the phone is turned sideways */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #app {
@@ -172,7 +175,8 @@ button.lang {
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
-  width: min(580px, 92vw);
+  /* stays clear of the 318px menu panel on the right (and the status panel on the left) */
+  width: min(580px, calc(100vw - 692px));
 }
 
 .top-center .caption {
@@ -442,7 +446,7 @@ button.lang {
 
 .venue {
   display: grid;
-  grid-template-columns: 10px 64px 1fr 34px 46px;
+  grid-template-columns: 10px 64px 1fr 42px 46px;
   align-items: center;
   gap: 6px;
   padding: 2px 0;
@@ -660,6 +664,16 @@ button.lang {
   font-weight: 600;
 }
 
+#hud em.full,
+#hud em.short {
+  font-style: normal;
+}
+
+/* short names (买入 for 大额买入, DEPTH for ORDER BOOK DEPTH) are for phones */
+#hud em.short {
+  display: none;
+}
+
 .br li.bull b {
   color: var(--bull);
 }
@@ -856,6 +870,7 @@ button.lang {
 
 .reserve-label {
   pointer-events: none;
+  transition: opacity 0.35s;
   text-align: center;
   padding: 5px 9px;
   border-radius: 8px;
@@ -864,6 +879,11 @@ button.lang {
   display: flex;
   flex-direction: column;
   line-height: 1.25;
+}
+
+/* cut by the screen edge or under a HUD panel (world.fitReserveLabels) */
+.reserve-label.cut {
+  opacity: 0;
 }
 
 .reserve-label b {
@@ -950,20 +970,346 @@ button.lang {
   }
 }
 
-@media (max-width: 860px) {
+/* ------------------------------------------------------------------ small screens
+   Compact layout for phones (either way up), tablets and windows up to 1100px wide: the status
+   panel, side reserves, venue list and keyboard hints are hidden, and the menu becomes an icon row
+   that shares the first line with the caption, so it never covers the price or the war bar.
+   Checked by `pnpm verify:mobile` (scripts/mobile-check.mjs). */
+@media (max-width: 1100px), (max-height: 500px) {
   .side,
+  .tl,
   .tr .venues,
   .hints {
     display: none;
   }
-  .bl,
-  .br {
-    width: calc(50vw - 20px);
+
+  .tr {
+    top: 8px;
+    right: 8px;
+    width: auto;
+    padding: 3px;
+    border-radius: 10px;
   }
+
+  .tr .buttons {
+    gap: 3px;
+    margin-bottom: 0;
+  }
+
+  .tr button {
+    height: 28px;
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
+  /* icon only; the full name stays in the tooltip */
+  .tr button span {
+    display: none;
+  }
+
+  .tr button.lang {
+    min-width: 32px;
+    font-size: 10.5px;
+  }
+
+  .top-center {
+    top: 8px;
+    width: min(580px, calc(100vw - 16px));
+    display: grid;
+    grid-template-columns: 1fr auto auto 1fr;
+    align-items: center;
+    column-gap: 8px;
+  }
+
+  /* first row, level with the menu */
+  .top-center .caption {
+    grid-column: 1 / -1;
+    height: 36px;
+    line-height: 36px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* price and 24h change share the second row */
+  .top-center .price-row {
+    grid-column: 2;
+  }
+
+  .top-center .change {
+    grid-column: 3;
+    justify-self: start;
+    margin-top: 0;
+    padding: 1px 7px;
+    font-size: 10.5px;
+  }
+
   .top-center .price {
     font-size: 30px;
   }
-  .tl {
+
+  .price-row .arrow {
+    width: 11px;
+    font-size: 11px;
+  }
+
+  .warbar {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    padding: 7px 10px 6px;
+  }
+
+  .warbar .ends small {
+    font-size: 8px;
+    letter-spacing: 0.06em;
+  }
+
+  .warbar .ends b {
+    font-size: 12px;
+  }
+
+  .warbar .status {
+    font-size: 11px;
+  }
+
+  .warbar .bar {
+    height: 5px;
+    margin-top: 6px;
+  }
+
+  .warbar .marker {
+    top: -4px;
+    height: 13px;
+  }
+
+  .warbar .score {
+    margin-top: 4px;
+    font-size: 9px;
+  }
+
+  .bl,
+  .br {
+    bottom: 8px;
+    width: min(380px, calc(50vw - 12px));
+    padding: 7px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+
+  .bl {
+    left: 8px;
+  }
+
+  .br {
+    right: 8px;
+  }
+
+  .head {
+    margin-bottom: 4px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+
+  .head select {
+    padding: 2px 4px;
+    font-size: 9.5px;
+  }
+
+  .bl canvas {
+    height: 96px;
+  }
+
+  .bl .axis {
+    font-size: 8.5px;
+  }
+
+  .bl .legend {
+    margin-top: 3px;
+    font-size: 8.5px;
+    line-height: 1.35;
+  }
+
+  .br ul {
+    min-height: 0;
+  }
+
+  .br li {
+    grid-template-columns: auto 13px 1fr auto;
+    gap: 5px;
+    padding: 2px 3px 2px 5px;
+  }
+
+  .br li time {
+    font-size: 9px;
+  }
+
+  .br li i {
+    width: 13px;
+    height: 13px;
+    font-size: 7.5px;
+  }
+
+  .br li.big b {
+    font-size: 11px;
+  }
+
+  /* the 'tap to turn on sound' hint floats over the field, clear of both bottom panels */
+  .sound-hint {
+    top: 56%;
+    bottom: auto;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .banner h1 {
+    font-size: 32px;
+  }
+
+  .banner .b-rule i {
+    width: 80px;
+  }
+
+  .banner p {
+    max-width: calc(100vw - 32px);
+    font-size: 11px;
+  }
+
+  .front-label {
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+
+  .reserve-label {
+    padding: 4px 7px;
+  }
+
+  .reserve-label b {
+    font-size: 8px;
+  }
+
+  .reserve-label span {
+    font-size: 12px;
+  }
+
+  .reserve-label small {
+    font-size: 8.5px;
+  }
+
+  .event-label {
+    font-size: 9px;
+  }
+
+  .event-label b {
+    font-size: 12px;
+  }
+
+  .event-label.liq b {
+    font-size: 14px;
+  }
+}
+
+/* phones, either way up: short names (everything in the feed is large; the depth select needs the room) */
+@media (max-width: 600px), (max-height: 500px) {
+  #hud em.full {
     display: none;
+  }
+
+  #hud em.short {
+    display: inline;
+  }
+}
+
+/* phones held upright */
+@media (max-width: 600px) {
+  /* caption on the left of the first row; the icon menu (about 175px) sits on the right */
+  .top-center .caption {
+    justify-self: start;
+    max-width: calc(100% - 186px);
+    padding-left: 2px;
+    text-align: left;
+  }
+
+  .top-center .price {
+    font-size: 26px;
+  }
+
+  .bl canvas {
+    height: 72px;
+  }
+
+  .br li:nth-child(n + 7) {
+    display: none;
+  }
+}
+
+/* phones held sideways: very little height */
+@media (max-height: 500px) {
+  /* narrower, so the price row can sit level with the menu */
+  .top-center {
+    width: min(460px, calc(100vw - 380px));
+  }
+
+  .top-center .caption {
+    display: none;
+  }
+
+  .top-center .price {
+    font-size: 22px;
+  }
+
+  .top-center .change {
+    font-size: 10px;
+  }
+
+  .warbar {
+    padding: 5px 9px 4px;
+  }
+
+  .warbar .bar {
+    margin-top: 5px;
+  }
+
+  .warbar .score {
+    margin-top: 3px;
+  }
+
+  .bl,
+  .br {
+    width: min(300px, 30vw);
+  }
+
+  .bl canvas {
+    height: 44px;
+  }
+
+  .br li:nth-child(n + 5) {
+    display: none;
+  }
+
+  /* between the two bottom panels */
+  .sound-hint {
+    top: auto;
+    bottom: 10px;
+    max-width: calc(40vw - 32px);
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* between the war bar and the bottom panels */
+  .banner {
+    top: 46%;
+  }
+
+  .banner h1 {
+    font-size: 26px;
+  }
+
+  .banner p {
+    margin-top: 5px;
+    font-size: 10.5px;
   }
 }

@@ -16,6 +16,7 @@ pnpm verify:feeds [秒]   # 在 Node 里跑真实交易所连接，输出指数/
 pnpm build && pnpm verify:screens   # 无头 Chrome 截图 + FPS/报错收集，输出到 verification/
 pnpm capture:fixtures [秒]  # 抓取真实交易所消息到 tests/fixtures/_capture/，用来刷新测试夹具
 pnpm build && pnpm verify:audio  # 音频检查，并渲染试听文件 verification/audio-preview.wav
+pnpm build && pnpm verify:mobile # 手机/平板/窄窗口布局检查：遮挡、出界、文字溢出，截图在 verification/mobile/
 ```
 
 ### URL 参数

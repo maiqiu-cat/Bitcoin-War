@@ -50,6 +50,8 @@ export class World {
   private flash = { color: new THREE.Color(), k: 0 };
   private frontLabel: CSS2DObject;
   private reserveLabels: Record<Team, CSS2DObject>;
+  /** Screen rectangles the reserve labels must not sit under (the HUD panels). */
+  labelObstacles?: () => DOMRect[];
   private activity = { buyPerSec: 0, sellPerSec: 0 };
   private celebrations: { at: number; team: Team }[] = [];
   private teamGlow: Record<Team, THREE.Color> = {
@@ -255,6 +257,9 @@ export class World {
   }
 
   private floatLabel(p: THREE.Vector3, e: FeedItem) {
+    // Skip labels the screen edge would cut in half (frequent on an upright phone).
+    const v = tmp2.set(p.x, p.y + 3, p.z).project(this.camera);
+    if (v.z > 1 || Math.abs(v.x) > 1 - 72 / Math.max(1, this.container.clientWidth)) return;
     const div = document.createElement('div');
     div.className = `event-label ${e.bull ? 'bull' : 'bear'} ${e.kind}`;
     div.innerHTML = `<span>${e.kind === 'liq' ? t(`feed.${e.type}`) : t(e.bull ? 'ev.buy' : 'ev.sell')}</span><b>${fmtUsd(e.usd)}</b>`;
@@ -360,5 +365,25 @@ export class World {
     if (this.post) this.post.render(dt);
     else this.renderer.render(this.scene, this.camera);
     this.labels.render(this.scene, this.camera);
+    this.fitReserveLabels();
+  }
+
+  /**
+   * Fade out reserve labels the screen edge would cut (an upright phone only sees the middle of the
+   * field) or that would sit under a HUD panel and show through it.
+   */
+  private fitReserveLabels() {
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    const panels = this.labelObstacles?.() ?? [];
+    for (const obj of Object.values(this.reserveLabels)) {
+      const el = obj.element;
+      const v = tmp2.copy(obj.position).project(this.camera);
+      const x = (v.x * 0.5 + 0.5) * w;
+      const y = (0.5 - v.y * 0.5) * h;
+      const [l, r, t, b] = [x - el.offsetWidth / 2, x + el.offsetWidth / 2, y - el.offsetHeight / 2, y + el.offsetHeight / 2];
+      const covered = panels.some((p) => l < p.right && r > p.left && t < p.bottom && b > p.top);
+      el.classList.toggle('cut', v.z > 1 || l < 4 || r > w - 4 || t < 4 || b > h - 4 || covered);
+    }
   }
 }

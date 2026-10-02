@@ -77,8 +77,13 @@ export class Hud {
   private price = { shown: NaN, target: NaN };
   private liq = { bid: NaN, ask: NaN, tBid: NaN, tAsk: NaN };
   private progress = { shown: 0.5, target: 0.5 };
+  private obstacleCache = { at: -Infinity, rects: [] as DOMRect[] };
 
-  constructor(root: HTMLElement, mode: 'live' | 'sim', cb: HudCallbacks) {
+  constructor(
+    private readonly root: HTMLElement,
+    mode: 'live' | 'sim',
+    cb: HudCallbacks,
+  ) {
     root.innerHTML = html`
       <div class="panel tl enter" style="--d:0">
         <div class="regime" data-k="regime"></div>
@@ -124,7 +129,7 @@ export class Hud {
       </div>
 
       <div class="panel bl enter" style="--d:3">
-        <div class="head"><span data-i18n="depthTitle"></span>
+        <div class="head"><span><em class="full" data-i18n="depthTitle"></em><em class="short" data-i18n="depthTitleShort"></em></span>
           <select data-k="source" aria-label="Depth source"><option value="all" data-i18n="aggregated"></option></select>
         </div>
         <canvas data-k="depth" width="600" height="220"></canvas>
@@ -187,6 +192,18 @@ export class Hud {
     for (const o of sel.options) if (o.value !== 'all') o.textContent = exLabel(o.value as ExchangeId);
     this.renderFeed();
     if (this.banner && this.el.banner.classList.contains('show')) this.renderBanner(this.banner);
+  }
+
+  /** Screen rectangles of the visible HUD panels, refreshed at most every 250 ms (3D labels fade out behind them). */
+  obstacles(now = performance.now()): DOMRect[] {
+    if (now - this.obstacleCache.at < 250) return this.obstacleCache.rects;
+    const rects: DOMRect[] = [];
+    for (const el of this.root.querySelectorAll<HTMLElement>('.panel, .top-center .price-row, .top-center .change')) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) rects.push(r);
+    }
+    this.obstacleCache = { at: now, rects };
+    return rects;
   }
 
   setLightingValue(v: string) {
@@ -337,7 +354,8 @@ export class Hud {
       li.className = `${it.bull ? 'bull' : 'bear'} ${it.kind}${big ? ' big' : ''}${fresh.includes(it.id) ? ' fresh' : ''}`;
       li.innerHTML =
         `<time>${fmtTime(it.ts)}</time><i style="background:${EX_COLOR[it.ex]}" title="${exLabel(it.ex)}">${exLabel(it.ex)[0]}</i>` +
-        `<span title="${it.detail ?? ''}">${t(`feed.${it.type}`)}</span><b>${fmtUsd(it.usd)}</b>`;
+        `<span title="${it.detail ?? ''}"><em class="full">${t(`feed.${it.type}`)}</em><em class="short">${t(`feedShort.${it.type}`)}</em></span>` +
+        `<b>${fmtUsd(it.usd)}</b>`;
       ul.appendChild(li);
     }
   }
@@ -402,7 +420,24 @@ export class Hud {
     let ca = 0;
     const cumA = asks.map(([p, v]) => [p, (ca += v)] as const);
     const maxY = Math.max(cb, ca, 1);
-    const Y = (v: number) => h - 4 - (v / maxY) * (h - 22 * dpr);
+    // Wall labels first: they decide how much headroom the chart leaves at the top.
+    const fs = (c.clientWidth < 300 ? 8.5 : 10) * dpr;
+    const pad = 4 * dpr;
+    g.font = `600 ${fs}px "Inter Variable", Inter, "PingFang SC", sans-serif`;
+    const wallText = (pts: (readonly [number, number])[], label: string) => {
+      const top = pts.reduce((a, b) => (b[1] > a[1] ? b : a), [0, 0] as readonly [number, number]);
+      if (!top[1]) return '';
+      const full = `${label} ${fmtUsd(top[1])} @ ${Math.round(top[0]).toLocaleString('en-US')}`;
+      return g.measureText(full).width <= w - 2 * pad ? full : `${label} ${fmtUsd(top[1])}`;
+    };
+    const bidText = wallText(bids, t('bidWall'));
+    const askText = wallText(asks, t('askWall'));
+    // Narrow charts (phones): the ask wall drops to a second line instead of running into the bid wall.
+    const stacked = !!bidText && !!askText && g.measureText(bidText).width + g.measureText(askText).width + 3 * pad > w;
+    const line1 = fs + 2 * dpr;
+    const line2 = stacked ? line1 + fs + 3 * dpr : line1;
+    const chartTop = line2 + 6 * dpr;
+    const Y = (v: number) => h - 4 - (v / maxY) * (h - 4 - chartTop);
     g.strokeStyle = 'rgba(255,255,255,0.05)';
     g.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
@@ -447,16 +482,12 @@ export class Hud {
     g.lineTo(X(price), h);
     g.stroke();
     g.setLineDash([]);
-    g.font = `600 ${10 * dpr}px "Inter Variable", Inter, "PingFang SC", sans-serif`;
-    const wall = (pts: (readonly [number, number])[], color: string, label: string, right: boolean) => {
-      const top = pts.reduce((a, b) => (b[1] > a[1] ? b : a), [0, 0] as readonly [number, number]);
-      if (!top[1]) return;
-      g.fillStyle = color;
-      g.textAlign = right ? 'right' : 'left';
-      g.fillText(`${label} ${fmtUsd(top[1])} @ ${Math.round(top[0]).toLocaleString('en-US')}`, right ? w - 4 * dpr : 4 * dpr, 12 * dpr);
-    };
-    wall(bids, '#41d877', t('bidWall'), false);
-    wall(asks, '#ff5a5a', t('askWall'), true);
+    g.fillStyle = '#41d877';
+    g.textAlign = 'left';
+    if (bidText) g.fillText(bidText, pad, line1);
+    g.fillStyle = '#ff5a5a';
+    g.textAlign = 'right';
+    if (askText) g.fillText(askText, w - pad, line2);
     this.el.dMin.textContent = fmtPrice(lo);
     this.el.dMid.textContent = fmtPrice(price);
     this.el.dMax.textContent = fmtPrice(hi);

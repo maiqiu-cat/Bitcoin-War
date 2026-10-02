@@ -28,6 +28,7 @@ describe('i18n', () => {
     for (const lang of ['zh', 'en'] as const) {
       for (const k of STATUS) expect(DICTIONARIES[lang][`status.${k}`], `${lang} status.${k}`).toBeTruthy();
       for (const k of FEED) expect(DICTIONARIES[lang][`feed.${k}`], `${lang} feed.${k}`).toBeTruthy();
+      for (const k of FEED) expect(DICTIONARIES[lang][`feedShort.${k}`], `${lang} feedShort.${k}`).toBeTruthy();
     }
   });
 

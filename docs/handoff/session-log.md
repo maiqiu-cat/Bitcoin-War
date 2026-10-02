@@ -13,6 +13,16 @@
 
 ---
 
+## 2026-10-03 · 会话 20：访问统计（Cloudflare Web Analytics）
+
+- 用户要求加访问统计，沿用另一个站点已经在用的做法（Cloudflare Web Analytics 的 beacon）。新增 `src/analytics.ts`：`shouldLoadAnalytics(hostname, token)` 纯函数，只认 `battle.ondream.ai` 和 32 位十六进制 token；`loadAnalytics()` 在 `main.ts` 最先调用，往 `<head>` 追加 beacon 脚本。本地开发、预览和验证脚本不会上报。
+- 这是 ADR 0008 的例外（站点唯一的第三方脚本），已写进 ADR、README「访问统计」、`docs/handoff/deploy.md`（将来加 CSP 要放行两个域名）、AGENTS.md 目录地图和 modules.md。三个验证脚本忽略含 `cloudflareinsights` 的控制台错误。
+- 新增 `tests/analytics.test.ts`（5 个），共 63 个单测通过；本地预览和把 `battle.ondream.ai` 指向本机的检查都确认没有注入脚本、没有对外请求（token 未填时关闭）。
+- 用户在仪表盘里为 battle.ondream.ai 新建了站点并提供了 token，已填进 `ANALYTICS.token`（公开的站点标识）；仪表盘入口记录在本机 `private/docs/handoff/analytics.md`。本地预览和把 `battle.ondream.ai` 指向本机的检查确认：本地不注入；生产域名下注入带 token 的脚本并请求 beacon。
+- **没有做**：没有发布到生产。
+
+---
+
 ## 2026-10-03 · 会话 19：全面质量审查、二次清理与公开仓库重建
 
 - **全面审查**（只读）：6 个子代理分块审查加本人复核，报告在本机 `~/Documents/CODE_REVIEW_2026-10-03-bitcoin-battle.md`（不入库）。8 条 P1、45 条 P2、约 60 条 P3，修复交给 Codex，顺序见报告第 6 节。

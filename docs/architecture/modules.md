@@ -58,6 +58,7 @@
 | 路径 | 说明 |
 | --- | --- |
 | `src/main.ts` | 读取 URL 参数，完成装配，运行逻辑 tick 和渲染帧，挂调试入口 `window.__bb`。URL 参数表见根目录 README。 |
+| `src/analytics.ts` | Cloudflare Web Analytics 的 beacon 加载：`shouldLoadAnalytics(hostname, token)` 是纯函数（只认 `battle.ondream.ai` 和 32 位十六进制 token），`loadAnalytics()` 在 `main.ts` 最先调用。token 是公开的站点标识，直接写在代码里。 |
 | `index.html` | 只有 `#app`（画布）和 `#hud`（覆盖层）两个容器。favicon 是内联 SVG。 |
 | `vite.config.ts` | `test.include = tests/**/*.test.ts`，Vitest 运行环境是 `node`。 |
 | `pnpm-workspace.yaml` | `allowBuilds: { esbuild: true }`，删掉 tsx 就跑不起来。 |

@@ -1,5 +1,6 @@
 import '@fontsource-variable/inter';
 import './ui/styles.css';
+import { loadAnalytics } from './analytics';
 import { AudioEngine, renderPreview } from './audio/engine';
 import { netState } from './data/connectivity';
 import { ALL_SOURCES, createFeeds } from './data/feeds/exchanges';
@@ -15,6 +16,7 @@ import { fmtPrice } from './ui/format';
 import { Hud } from './ui/hud';
 
 /* ----------------------------------------------------------------- Options */
+loadAnalytics(); // production host only
 const params = new URLSearchParams(location.search);
 const simMode = params.has('sim');
 const quality = params.get('q') ?? 'high';

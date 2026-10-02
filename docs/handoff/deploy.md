@@ -15,6 +15,10 @@
 
 服务器 IP、主机名或 SSH 别名、SSH 用户和密钥、内网/VPN 地址、同机其他站点和容器、系统与软件版本、云服务商和 DNS 服务商、本机网络配置，都只写进 `private/`。入库的脚本和文档用 [RFC 5737](https://www.rfc-editor.org/rfc/rfc5737) 文档专用地址（`192.0.2.0/24`、`198.51.100.0/24`、`203.0.113.0/24`）举例。
 
+## 访问统计
+
+线上页面通过 `src/analytics.ts` 加载 Cloudflare Web Analytics 的 beacon，只在 `battle.ondream.ai` 域名下加载。以后给 Nginx 加 Content-Security-Policy 时，必须放行 `script-src https://static.cloudflareinsights.com` 和 `connect-src https://cloudflareinsights.com`，否则统计会静默失效。仪表盘入口和站点 token 的记录在本机 `private/docs/handoff/analytics.md`。
+
 ## 为什么不用容器（用户问过）
 
 用户的顾虑是「不要影响服务器上的其他站点」。分析：

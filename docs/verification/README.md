@@ -5,11 +5,11 @@
 | 命令 | 检查什么 | 通过标准 | 耗时 |
 | --- | --- | --- | --- |
 | `pnpm build` | 类型检查（tsc strict，`noUnusedLocals/Parameters`）和打包 | 没有报错 | <5s |
-| `pnpm test` | 52 个单测（下面有清单） | 全部通过 | <1s |
+| `pnpm test` | 58 个单测（下面有清单） | 全部通过 | <1s |
 | `pnpm verify:feeds [秒]` | 用 Node 连真实交易所跑 N 秒（默认 45），输出每家的连接次数、断线、消息数、成交数、盘口档数、价差、相对指数的偏差和权重，并做 6 项断言 | 6 项全部 PASS；报告写入 `verification/feeds-report.json` | N 秒 |
 | `pnpm build && pnpm verify:screens` | 启动 vite preview，在无头 Chrome（1600×900）里跑 4 组场景并截图；收集 FPS、单位数、指数、回合、横幅、语言和报错 | 输出 `No runtime errors`（Binance 的 451 和 fstream 报错属于预期，已过滤），FPS 和单位数合理，**人工看过截图**；报告在 `verification/screens-report.json` | 约 2 分钟 |
 | `pnpm build && pnpm verify:audio` | 无头 Chrome，分三部分：A 允许自动播放时不用点击就出声；B0 喇叭按钮首次解锁、静音与恢复；B1–B7 拦截时提示、点击后出声、激战与胜利切换、M 键、无错误；C 用真实资源离线渲染 36 秒场景（`verification/audio-preview.wav`，不入库），要求不爆音、爆炸比配乐底层高 ≥8 dB | 全部 PASS，并且人工听一遍；公网较慢时还须排除模拟行情状态变化造成的假阴性 | 约 1 分钟 |
-| `pnpm build && pnpm verify:mobile` | 无头 Chrome，12 种视口（手机竖屏 5 种含浏览器地址栏后的实际可用高度、手机横屏 3 种、iPad 竖横、1280 笔记本、1440 桌面）× 中英文；先塞满 8 条市场动态和 6 家交易所、再弹出开场横幅，测最拥挤的情况。`MOBILE_CHECK_URL=https://battle.ondream.ai` 可直接查线上，`MOBILE_CHECK_ONLY=iphone,landscape` 只跑部分视口（不写报告） | 输出 `MOBILE LAYOUT CHECKS PASSED (24)`：各 HUD 块互不重叠、都在屏幕内、页面不能横向滚动、没有文字溢出、动态标签宽度 ≥24px、深度轴三个价格间距 ≥4px、无运行时错误；**人工看过** `verification/mobile/*.jpg`；报告在 `verification/mobile-report.json` | 约 2 分钟 |
+| `pnpm build && pnpm verify:mobile` | 无头 Chrome，12 种视口（手机竖屏 5 种含浏览器地址栏后的实际可用高度、手机横屏 3 种、iPad 竖横、1280 笔记本、1440 桌面）× 中英文；先塞满 8 条市场动态和 6 家交易所，再弹出开场横幅，最后显示网络提示（「无法连接到交易所」），测最拥挤的情况。`MOBILE_CHECK_URL=https://battle.ondream.ai` 可直接查线上，`MOBILE_CHECK_ONLY=iphone,landscape` 只跑部分视口（不写报告） | 输出 `MOBILE LAYOUT CHECKS PASSED (24)`：各 HUD 块（含左上角品牌）互不重叠、都在屏幕内、页面不能横向滚动、没有文字溢出、横幅和网络提示不盖住其他块、动态标签宽度 ≥24px、深度轴三个价格间距 ≥4px、无运行时错误；**人工看过** `verification/mobile/*.jpg`；报告在 `verification/mobile-report.json` | 约 2 分钟 |
 | `pnpm capture:fixtures [秒]` | 抓真实消息到 `tests/fixtures/_capture/`（已加入 gitignore） | 各交易所都有样本 | N 秒 |
 
 ### `verify:feeds` 的 6 项断言
@@ -38,6 +38,7 @@
 | `parsers.test.ts`（15） | OKX：成交、盘口快照和增量（400 档）、ticker 成交额、爆仓过滤和换算（U 本位、币本位、posSide、net 模式）、订阅确认和 pong 被忽略。<br>Coinbase：主动方取反、跳过 last_match、ticker 成交额、level2 快照和增量。<br>Kraken：盘口、成交、两个 ticker（含 USDT/USD）。<br>Bybit：现货三个频道、allLiquidation 方向。<br>Bitstamp：type 0 是买、top100 快照。<br>Binance：aggTrade 的 m、depth20、forceOrder。<br>Deribit：权利金换算。 |
 | `market.test.ts`（9） | OrderBook：快照和增量、截断、去交叉。<br>MarketHub：USDT 换算后按成交额加权、离群和过期剔除、大单合并、不同方向和隔太远的成交不合并、爆仓方向、深度分桶和过期盘口剔除。 |
 | `battle.test.ts`（12） | BattleEngine：开局、牛方胜、间歇、下一局、熊方胜。<br>narrate：8 种情形。<br>FieldMap：映射和反解、刻度步长、波动有界。<br>layoutArmies：key 唯一、前线/场内/储备拆分、在本方一侧、结果确定、列顺序是排列、niceUsd。 |
+| `connectivity.test.ts`（6） | 网络提示判断：离线、启动宽限期、宽限期后没有成交、有现货成交、运行中断流 20 秒、期权成交不算。 |
 | `i18n.test.ts`（4） | 两份字典的键集合一致、覆盖所有 StatusKey 和 FeedType、占位符一致、变量替换和切换语言。 |
 | `audio.test.ts`（12） | 空间化（距离和闷度）、限流、变体不重复、强度和平滑、平静/激战切换滞后、爆炸分级、呼啸对齐、避让深度、资源清单（文件存在、循环参数、变体数）、声音偏好读取。 |
 
@@ -66,6 +67,7 @@
 | 2026-10-02（手机布局） | `pnpm verify:mobile`、`pnpm test`、`pnpm build`、`verify:audio`、`verify:screens` | 24/24 PASS；手机竖屏、横屏、iPad 截图已人工检查；52/52 单测；音频全部 PASS（B0 在 800×600 紧凑布局下点喇叭仍正常）；桌面 11 张截图 60 FPS、0 个非预期错误，布局与修改前一致 |
 | 2026-10-02（独立复核） | `pnpm build`、`pnpm test`、`pnpm verify:mobile`、`pnpm verify:audio`、`pnpm verify:screens` | 发现并修复 375×553 中文动态滑入时的横向溢出；定点浏览器复现由面板 +6px 变为 0；复跑 24/24、52/52、音频全部 PASS、桌面 11 张 59–60 FPS 且无非预期运行时错误；已看手机、iPad 和桌面截图 |
 | 2026-10-02（手机版生产验收） | `https://battle.ondream.ai/`、`MOBILE_CHECK_URL=https://battle.ondream.ai pnpm verify:mobile` | `20261002-0335-4f903d9`；线上 24/24 PASS，中文竖屏与横屏截图已复看；首页 SHA-256 与发布包一致，音频资源 200 + immutable；发布前后审计只有 Battle 版本指针和版本列表变化，Nginx 未重载 |
+| 2026-10-02（左上角品牌 + 网络提示） | `pnpm build`、`pnpm test`、`pnpm verify:mobile`、`pnpm verify:screens`；本地预览实时模式端到端 | 58/58 单测；桌面截图 56–59 FPS、0 个非预期运行时错误（只有预期内的 Binance 451）；24/24 PASS（新增网络提示一轮，截图 `*-offline.jpg`），手机竖屏、横屏、桌面截图已人工检查。实时模式：正常连接 16 秒不提示；断网 1.5 秒内显示「网络已断开」，恢复后自动消失；只连 Binance（本机网络 451）时第 8 秒不提示、第 14 秒显示「无法连接到交易所」；切换语言后标题即时变为英文 |
 
 每次跑完有意义的验证，往这张表里加一行。
 

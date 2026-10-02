@@ -10,8 +10,9 @@
  *   1. every visible HUD block lies inside the screen and the page cannot scroll sideways;
  *   2. no two HUD blocks overlap (the menu never covers the price, the change or the war bar);
  *   3. no text sticks out of its box (labels that are meant to end in "…" excepted);
- *   4. feed labels keep room to be read and the depth axis prices do not run together.
- * Screenshots: verification/mobile/<viewport>-<lang>[-banner].jpg (git-ignored).
+ *   4. feed labels keep room to be read and the depth axis prices do not run together;
+ *   5. the round banner and the network notice ("check your network") fit without covering other blocks.
+ * Screenshots: verification/mobile/<viewport>-<lang>[-banner|-offline].jpg (git-ignored).
  * Report: verification/mobile-report.json (MOBILE_CHECK_ONLY=iphone,landscape runs a subset and writes no report).
  */
 import { spawn } from 'node:child_process';
@@ -88,6 +89,7 @@ function measure(venues) {
     const b = text ? textBox(el) : box(el.getBoundingClientRect());
     if (b) blocks[name] = b;
   };
+  add('brand', '.brand');
   add('caption', '.top-center .caption', true);
   add('price', '.top-center .price-row', true);
   add('change', '.top-center .change');
@@ -101,6 +103,7 @@ function measure(venues) {
   add('soundHint', '.sound-hint');
   add('hints', '.hints', true);
   add('banner', '.banner');
+  add('netAlert', '.net-alert');
 
   const describe = (el) => `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : ''}${el.dataset.k ? `[${el.dataset.k}]` : ''}`;
   const overflow = [];
@@ -199,6 +202,17 @@ try {
         mb = await page.evaluate(measure, VENUES);
         await page.screenshot({ path: `${OUT}/${vp.id}-${lang}-banner.jpg`, type: 'jpeg', quality: 72 });
       }
+      // The network notice live mode shows when no exchange sends data (sim mode never does by itself).
+      let mn = null;
+      if (hasHud) {
+        await page.evaluate(() => {
+          document.querySelector('.banner')?.setAttribute('class', 'banner');
+          window.__bb.hud.setNet('unreachable');
+        });
+        await sleep(700);
+        mn = await page.evaluate(measure, VENUES);
+        await page.screenshot({ path: `${OUT}/${vp.id}-${lang}-offline.jpg`, type: 'jpeg', quality: 72 });
+      }
       await page.close();
 
       const fails = [];
@@ -216,6 +230,13 @@ try {
         if (bo.length) fails.push(`banner overlaps: ${bo.join(', ')}`);
         if (outsideOf(mb, ['banner']).length) fails.push('banner off screen');
       }
+      if (mn) {
+        if (!mn.blocks.netAlert) fails.push('network notice not shown');
+        const no = overlapsOf(mn, 'netAlert');
+        if (no.length) fails.push(`network notice overlaps: ${no.join(', ')}`);
+        if (outsideOf(mn, ['netAlert']).length) fails.push('network notice off screen');
+        if (mn.overflow.length) fails.push(`network notice text sticks out: ${mn.overflow.join(' | ')}`);
+      }
       const ok = fails.length === 0;
       console.log(`${ok ? 'PASS' : 'FAIL'}  ${vp.id.padEnd(17)} ${lang}  ${vp.width}×${vp.height}  min font ${m.minFont}px  feed rows ${m.feedRows}${ok ? '' : '\n      ' + fails.join('\n      ')}`);
       results.push({
@@ -230,6 +251,7 @@ try {
         axisGap: m.axisGap,
         blocks: compact(m.blocks),
         banner: mb?.blocks.banner ? compact({ banner: mb.blocks.banner }).banner : null,
+        netAlert: mn?.blocks.netAlert ? compact({ netAlert: mn.blocks.netAlert }).netAlert : null,
         overflow: m.overflow,
       });
     }

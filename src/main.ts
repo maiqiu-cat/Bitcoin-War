@@ -1,6 +1,7 @@
 import '@fontsource-variable/inter';
 import './ui/styles.css';
 import { AudioEngine, renderPreview } from './audio/engine';
+import { netState } from './data/connectivity';
 import { ALL_SOURCES, createFeeds } from './data/feeds/exchanges';
 import { MarketHub, type FeedItem } from './data/market';
 import { SimFeed } from './data/sim';
@@ -71,6 +72,14 @@ hud.setSound(audio.state);
 hud.setLightingValue(lightingChoice);
 hud.setCinematic(world.rig.cinematic);
 world.onModeChange = (on) => hud.setCinematic(on);
+// Live mode: ask the visitor to check their network when the browser is offline or no exchange sends trades.
+if (!simMode) {
+  const startedAt = Date.now();
+  const checkNet = () => hud.setNet(netState(hub.venues.values(), Date.now(), startedAt, navigator.onLine));
+  setInterval(checkNet, 1000);
+  window.addEventListener('offline', checkNet);
+  window.addEventListener('online', checkNet);
+}
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'f' && world.field) world.rig.focusFront(world.field.x(world.frontPrice));
   if (e.key.toLowerCase() === 'm' && !(e.target instanceof HTMLSelectElement)) audio.toggle();

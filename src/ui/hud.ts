@@ -1,3 +1,4 @@
+import type { NetState } from '../data/connectivity';
 import type { DepthBuckets, FeedItem, IndexResult, VenueState } from '../data/market';
 import type { ExchangeId } from '../data/types';
 import type { Round, StatusKey } from '../game/battle';
@@ -35,6 +36,7 @@ const ICONS = {
   full: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`,
   soundOn: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>`,
   soundOff: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>`,
+  warn: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.3v.2"/></svg>`,
 };
 
 export interface HudCallbacks {
@@ -72,6 +74,7 @@ export class Hud {
   private lastScore: { id: number; b: number; r: number } | null = null;
   private legendArgs: [number, number, number, number] | null = null;
   private banner?: BannerSpec;
+  private net: NetState = 'ok';
   private lastIdx: IndexResult | null = null;
   // tweened numbers
   private price = { shown: NaN, target: NaN };
@@ -85,6 +88,8 @@ export class Hud {
     cb: HudCallbacks,
   ) {
     root.innerHTML = html`
+      <div class="brand enter" style="--d:0"><img src="/favicon.svg" alt="" width="34" height="34" /><span data-i18n="brand"></span></div>
+
       <div class="panel tl enter" style="--d:0">
         <div class="regime" data-k="regime"></div>
         <div class="row">
@@ -147,6 +152,10 @@ export class Hud {
         <h1 data-k="bTitle"></h1>
         <p data-k="bSub"></p>
       </div>
+      <div class="net-alert" data-k="net" role="status" aria-live="polite">
+        <span class="net-icon">${ICONS.warn}</span>
+        <div><b data-k="netTitle"></b><p data-i18n="net.check"></p></div>
+      </div>
       <button class="sound-hint" data-k="soundHint"><span>${ICONS.soundOn}</span><b data-i18n="sound.hint"></b></button>
       <div class="hints" data-i18n="hints"></div>
     `;
@@ -192,13 +201,27 @@ export class Hud {
     for (const o of sel.options) if (o.value !== 'all') o.textContent = exLabel(o.value as ExchangeId);
     this.renderFeed();
     if (this.banner && this.el.banner.classList.contains('show')) this.renderBanner(this.banner);
+    this.renderNet();
+  }
+
+  /** Network notice in the middle of the screen while the browser is offline or no exchange sends data. */
+  setNet(state: NetState) {
+    if (state === this.net) return;
+    this.net = state;
+    this.renderNet();
+  }
+
+  private renderNet() {
+    const show = this.net === 'offline' || this.net === 'unreachable';
+    if (show) this.el.netTitle.textContent = t(`net.${this.net}`);
+    this.el.net.classList.toggle('show', show);
   }
 
   /** Screen rectangles of the visible HUD panels, refreshed at most every 250 ms (3D labels fade out behind them). */
   obstacles(now = performance.now()): DOMRect[] {
     if (now - this.obstacleCache.at < 250) return this.obstacleCache.rects;
     const rects: DOMRect[] = [];
-    for (const el of this.root.querySelectorAll<HTMLElement>('.panel, .top-center .price-row, .top-center .change')) {
+    for (const el of this.root.querySelectorAll<HTMLElement>('.brand, .panel, .top-center .price-row, .top-center .change, .net-alert.show')) {
       const r = el.getBoundingClientRect();
       if (r.width > 0 && r.height > 0) rects.push(r);
     }

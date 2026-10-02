@@ -5,9 +5,22 @@
 #   ALLOW_DIRTY=1 deploy/package.sh
 #
 # Output (git-ignored): deploy/out/battle-<YYYYMMDD-HHMM>-<sha>.tar.gz (+ .sha256)
-# Kit layout: battle-<id>/{site/, nginx/, install.sh, release.json, MANIFEST.sha256}
+# Kit layout: battle-<id>/{site/, nginx/, install.sh, site.env, release.json, MANIFEST.sha256}
+# Server-specific values come from the git-ignored private/deploy/ (templates: deploy/examples/).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+conf=private/deploy/site.env
+listen=private/deploy/https-listen.conf
+[ -f "$conf" ] && [ -f "$listen" ] || {
+  echo "missing $conf or $listen; create them from deploy/examples/" >&2
+  exit 1
+}
+expect_ip=$(. "$conf" && printf '%s' "${EXPECT_IP:-}")
+[ -n "$expect_ip" ] || {
+  echo "EXPECT_IP not set in $conf" >&2
+  exit 1
+}
 
 dirty=$(git status --porcelain | wc -l | tr -d ' ')
 if [ "$dirty" != "0" ] && [ "${ALLOW_DIRTY:-0}" != "1" ]; then
@@ -24,11 +37,12 @@ kit="deploy/out/battle-$id"
 }
 
 pnpm build
-mkdir -p "$kit/nginx"
+mkdir -p "$kit"
 cp -R dist "$kit/site"
-cp deploy/nginx/battle.http.conf deploy/nginx/battle.https.conf "$kit/nginx/"
+deploy/render-nginx.sh "$listen" "$kit/nginx"
 cp deploy/server/install.sh "$kit/install.sh"
 chmod 755 "$kit/install.sh"
+printf 'EXPECT_IP=%s\n' "$expect_ip" >"$kit/site.env"
 cat >"$kit/release.json" <<JSON
 {
   "id": "$id",

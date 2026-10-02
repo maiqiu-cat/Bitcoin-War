@@ -4,7 +4,8 @@
 #   deploy/package.sh && deploy/test/rehearse.sh            # newest kit in deploy/out/
 #   deploy/test/rehearse.sh deploy/out/battle-<id>           # a specific kit directory
 #
-# Sandbox (mirrors the 2026-10-01 read-only audit of the production server):
+# Sandbox (mirrors the 2026-10-01 read-only audit of the production server; the addresses are the
+# documentation ranges from deploy/examples/https-listen.conf, which the kits here are rendered with):
 #   * nginx with an explicit `listen 80 default_server` site
 #   * HTTPS sites listening only on 192.0.2.10:443 and 127.0.0.1:443 (ssl http2), the first one
 #     being the implicit :443 default
@@ -29,7 +30,7 @@ name=$(basename "$kit")
 mk() { # mk <dir-name>: copy the kit with the current installer/templates
   cp -R "$kit" "$work/$1"
   cp deploy/server/install.sh "$work/$1/install.sh"
-  cp deploy/nginx/battle.*.conf "$work/$1/nginx/"
+  deploy/render-nginx.sh deploy/examples/https-listen.conf "$work/$1/nginx"
   rm -f "$work/$1/MANIFEST.sha256"
 }
 mk "$name"

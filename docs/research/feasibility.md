@@ -37,7 +37,7 @@
 | 光照 | Golden hour / Clear | ✅ 黄昏、白天、夜晚，或按本地时间自动 |
 | 聊天 | Market chat | ❌ 未做（需要账号、后端和内容审核，和本次验证无关） |
 
-参考帧：[`newhedge-frames/`](newhedge-frames/)（原视频每 2 秒一帧，逐帧说明见 [newhedge-reference.md](newhedge-reference.md)）
+参考帧：本机 `private/research/newhedge-frames/`（第三方画面，不入库；原视频每 2 秒一帧，逐帧说明见 [newhedge-reference.md](newhedge-reference.md)）
 
 ## 验证证据
 

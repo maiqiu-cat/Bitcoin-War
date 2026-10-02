@@ -1,6 +1,6 @@
 # 效果截图
 
-由 `pnpm verify:screens` 生成的 PNG 转成 JPG（`sips -s format jpeg -s formatOptions 82`），保存最近一版的代表画面。生成时间：2026-10-01，版本 `ba9565d`（中英文 + 动画升级）。
+由 `pnpm verify:screens` 生成的 PNG 转成 JPG（`sips -s format jpeg -s formatOptions 82`），保存最近一版的代表画面。生成时间：2026-10-01，版本 `0762cb1`（中英文 + 动画升级）。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -10,4 +10,4 @@
 | `sim-4-night.jpg` | 模拟行情，夜晚：发光的战线、基地和胜利线 |
 | `sim-rounds-1-win.jpg` | 模拟行情窄回合（±0.06%），牛方攻下熊方基地：横幅、爆炸、焦痕、冲击环 |
 
-原版的参考帧在 [../research/newhedge-frames/](../research/newhedge-frames/)。
+原版的参考帧只在本机 `private/research/newhedge-frames/`（第三方画面，不入库）。

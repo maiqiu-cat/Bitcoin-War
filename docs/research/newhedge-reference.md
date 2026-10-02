@@ -8,7 +8,7 @@
 
 - 视频：20.5 秒，1920×1080。取得方式：
   1. 用 `https://api.fxtwitter.com/newhedge_io/status/2104903265959760161` 拿到推文信息和视频地址。
-  2. 下载 720p mp4，用 `ffmpeg -vf fps=0.5` 每 2 秒抽一帧，存在 [newhedge-frames/](newhedge-frames/)。
+  2. 下载 720p mp4，用 `ffmpeg -vf fps=0.5` 每 2 秒抽一帧，存在本机 `private/research/newhedge-frames/`（第三方画面，不入库）。
 
 ## 逐帧
 

@@ -4,11 +4,19 @@
 #   deploy/push.sh [archive] [command]      # command: preflight (default) | deploy | cert | status | audit | rollback
 #   deploy/push.sh deploy/out/battle-20261001-1830-abc1234.tar.gz deploy
 #
-# Requires `ssh $DEPLOY_HOST` to work (see docs/handoff/deploy.md).
+# Requires `ssh $DEPLOY_HOST` to work. DEPLOY_HOST and DEPLOY_ROOT come from the git-ignored
+# private/deploy/site.env (template: deploy/examples/site.env); environment variables win.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-HOST=${DEPLOY_HOST:-prod-server}
-REMOTE_DIR=/root/battle-deploy
+env_host=${DEPLOY_HOST:-} env_root=${DEPLOY_ROOT:-}
+conf=private/deploy/site.env
+[ ! -f "$conf" ] || . "$conf"
+HOST=${env_host:-${DEPLOY_HOST:-}}
+REMOTE_DIR=${env_root:-${DEPLOY_ROOT:-/root/battle-deploy}}
+[ -n "$HOST" ] || {
+  echo "DEPLOY_HOST not set; create $conf from deploy/examples/site.env" >&2
+  exit 1
+}
 archive=${1:-$(ls -t deploy/out/battle-*.tar.gz 2>/dev/null | head -1)}
 cmd=${2:-preflight}
 [ -f "$archive" ] || {

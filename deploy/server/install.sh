@@ -29,7 +29,6 @@
 set -euo pipefail
 
 DOMAIN=battle.ondream.ai
-EXPECT_IP=203.0.113.10
 SITE=/var/www/battle.ondream.ai
 ACME=/var/www/battle-acme
 CONF=/etc/nginx/conf.d/zz-battle.ondream.ai.conf
@@ -40,6 +39,9 @@ KIT="$(cd "$(dirname "$0")" && pwd)"
 REL="$(basename "$KIT")"
 REL="${REL#battle-}"
 STATE="$SITE/.state"
+# Public IP $DOMAIN must resolve to before `cert`. Server-specific, so deploy/package.sh writes it
+# into the kit's site.env from the git-ignored private/deploy/site.env.
+EXPECT_IP=$(sed -n 's/^EXPECT_IP=//p' "$KIT/site.env" 2>/dev/null | head -1)
 
 log() { printf '[battle] %s\n' "$*"; }
 warn() { printf '[battle] WARN: %s\n' "$*" >&2; }
@@ -96,8 +98,8 @@ nginx_file_hashes() {
 listeners() { ss -ltnH 2>/dev/null | awk '{print $4}' | LC_ALL=C sort -u; }
 
 # Every :443 listen in our HTTPS template must name an explicit address that nginx already owns.
-# A bare/wildcard `listen 443` passes `nginx -t` but fails at reload (another process holds
-# 198.51.100.7:443), leaving nginx on the old config and a poisoned file in conf.d.
+# A bare/wildcard `listen 443` passes `nginx -t` but fails at reload when another process holds a
+# specific-IP :443 (as on production), leaving nginx on the old config and a poisoned file in conf.d.
 check_https_sockets() {
   local tmpl="$KIT/nginx/battle.https.conf" want n=0
   [ -f "$tmpl" ] || return 0
@@ -304,6 +306,7 @@ cert() {
   [ -e "$CONF" ] || die "run 'deploy' first (the HTTP config serves the ACME challenge)"
   if [ ! -f "$CERT" ]; then
     local resolved
+    [ -n "$EXPECT_IP" ] || die "kit has no EXPECT_IP in site.env — rebuild it with deploy/package.sh"
     resolved=$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk 'NR==1{print $1}')
     [ "$resolved" = "$EXPECT_IP" ] || die "$DOMAIN resolves to '${resolved:-nothing}', expected $EXPECT_IP — fix the DNS A record / wait for DNS"
     # Self-test the challenge path through nginx before asking Let's Encrypt.

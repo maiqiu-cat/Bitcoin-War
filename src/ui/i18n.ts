@@ -3,8 +3,8 @@ export type Lang = 'zh' | 'en';
 type Dict = Record<string, string>;
 
 const en: Dict = {
-  'app.title': 'Bitcoin Battle',
-  brand: 'Bitcoin Battle',
+  'app.title': 'Bitcoin War',
+  brand: 'Bitcoin War',
   'x.title': 'Follow @MagicPower21M on X',
   'net.offline': "You're offline",
   'net.unreachable': "Can't reach the exchanges",

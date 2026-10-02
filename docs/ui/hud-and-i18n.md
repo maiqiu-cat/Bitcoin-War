@@ -30,7 +30,7 @@
   - 每秒：`setLiquidity`、`setVenues`、`setSources`、`setRegime`
   - 每帧：`frame(dt)` 做补间
   - 事件到达时：`addFeed`
-- **品牌**（`.brand`）：左上角的网站 logo（`/favicon.svg`）加「比特币战争」（英文界面为 Bitcoin Battle，键 `brand`）。桌面端状态面板 `.tl` 下移到它下面；小屏见下文。不响应点击。
+- **品牌**（`.brand`）：左上角的网站 logo（`/favicon.svg`）加「比特币战争」（英文界面为 Bitcoin War，键 `brand`）。桌面端状态面板 `.tl` 下移到它下面；小屏见下文。不响应点击。
 - **作者 X 链接**（`.xlink`）：头像（本地 `public/x-avatar.jpg`，取自 X 主页，200×200）+ 昵称「MagicPower ⚡」+ X 标志，链接 `https://x.com/MagicPower21M`，新标签页打开，悬停提示和读屏文字是「在 X 上关注 @MagicPower21M」（键 `x.title`）。地址和昵称写在 `hud.ts` 的 `X_PROFILE`。模板里有两份：`.in-masthead` 在品牌旁边，`.under-bar` 在战况条下面，由 CSS 决定哪份显示。桌面端放在品牌右侧同一行；小屏的放法见下文。
 - **网络提示**（`.net-alert`，`setNet()`）：只在实时模式下出现，由 `src/data/connectivity.ts` 判断。浏览器离线时立即显示「网络已断开」；启动 12 秒后仍没有任何现货成交，或运行中 20 秒没有新成交，显示「无法连接到交易所」，说明文字请用户检查网络、等待自动重连或刷新页面。数据恢复后自动消失。位置与横幅相同（两者不会同时出现：没有数据就没有回合事件），3D 标签会在它后面淡出。
 - **对外回调**（`HudCallbacks`）：`onLighting`、`onCinematic`、`onSource`、`onFocus`，在 `main.ts` 里接线。

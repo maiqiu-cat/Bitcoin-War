@@ -1,8 +1,8 @@
-# Bitcoin Battle
+# Bitcoin War
 
 中文名「比特币战争」。这是一个独立的、非官方的实现，灵感来自 Newhedge 的「Bitcoin Battlefield」（<https://newhedge.io/bitcoin/battlefield>，推文 <https://x.com/newhedge_io/status/2104903265959760161>）；本项目与 Newhedge 没有任何关联，也未获其认可。BTC 价格就是战线，盘口挂单就是兵力，主动成交、爆仓和期权成交会变成战场上的炮击。
 
-*Bitcoin Battle is an independent, unofficial implementation inspired by Newhedge's Bitcoin Battlefield. It is not affiliated with or endorsed by Newhedge.*
+*Bitcoin War is an independent, unofficial implementation inspired by Newhedge's Bitcoin Battlefield. It is not affiliated with or endorsed by Newhedge.*
 
 - **许可**：[PolyForm Noncommercial 1.0.0](LICENSE.md)。可以复制、分发、修改，**不可以商用**，详见文末「[许可](#许可)」
 - 可行性结论和验证证据：[docs/research/feasibility.md](docs/research/feasibility.md)

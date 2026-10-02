@@ -11,6 +11,7 @@
 - **产品名**：用户定为「比特币战争」。页面标题（`app.title`）、manifest 的 `name`/`short_name` 与左上角品牌统一。
 - **非官方声明**：README 和 AGENTS.md 写明本项目是独立的非官方实现，与 Newhedge 无关联、未获认可。站点上的可见声明和与原版相同的英文界面文案，交给 Codex 处理（见审查报告 L-3）。
 - **仓库重建**：旧仓库 `Bitcoin-Battle` 由用户删除，新仓库改名为 `Bitcoin-War`（<https://github.com/maiqiu-cat/Bitcoin-War>，公开，关闭 Wiki）。文档里的当前链接和 `LICENSE.md` 的 Required Notice 已更新；旧链接失效。推送后给 `main` 开了分支保护（禁止强制推送和删除），打开 Dependabot 告警。从此提交时间统一为 UTC，`check:public` 会检查。
+- **英文名**：用户随后决定英文名也改为 **Bitcoin War**：英文页面标题和品牌、`index.html` 标题、manifest、`favicon.svg` 的标题、`package.json` 的包名，以及 README、AGENTS.md 等文档里的产品名已统一。本地目录名 `Bitcoin Battle` 和 `deploy/` 里的注释没有改（改 Nginx 模板注释会让下次发布重载共用 Nginx，留给后续改模板时一起做）。`verify:mobile` 复跑 24/24。
 - **没有做**：没有发布到生产；审查报告里的其余问题尚未修复。
 
 ---

@@ -8,6 +8,7 @@
 | `screens-report.json` | `pnpm verify:screens`：每个运行的 WebGL 渲染器、每张截图的统计（FPS、单位数、指数、回合、横幅、语言）、报错 | 是（保留最近一次） |
 | `*.png` | `pnpm verify:screens` 的截图 | 否（`.gitignore`） |
 | `mobile-report.json` | `pnpm verify:mobile`：每个视口和语言的 HUD 块坐标、重叠、出界、溢出、最小字号、失败原因 | 是（保留最近一次） |
+| `mobile-report-production.json` | `MOBILE_CHECK_URL=https://battle.ondream.ai pnpm verify:mobile`：同一套检查针对已发布网站的结果 | 是（保留最近一次） |
 | `mobile/*.jpg` | `pnpm verify:mobile` 的截图（每个视口 × 语言一张，另有一张带开场横幅） | 否（`.gitignore`） |
 
 长期保留的效果图放在 `docs/screens/`（JPG）。

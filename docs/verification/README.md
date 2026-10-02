@@ -65,6 +65,7 @@
 | 2026-10-02（手机布局） | `pnpm verify:mobile`（修改前，即线上 `20261001-1541-de01e82` 的样式） | 24 个组合 19 个失败：手机竖屏菜单盖住标题、价格和涨跌幅，声音提示压住两个底部面板，动态类型文字被挤到 2px，深度轴价格连成一串；手机横屏几乎全部互相重叠；iPad 竖屏菜单盖住价格；iPad 横屏英文左上面板压到战况条 |
 | 2026-10-02（手机布局） | `pnpm verify:mobile`、`pnpm test`、`pnpm build`、`verify:audio`、`verify:screens` | 24/24 PASS；手机竖屏、横屏、iPad 截图已人工检查；52/52 单测；音频全部 PASS（B0 在 800×600 紧凑布局下点喇叭仍正常）；桌面 11 张截图 60 FPS、0 个非预期错误，布局与修改前一致 |
 | 2026-10-02（独立复核） | `pnpm build`、`pnpm test`、`pnpm verify:mobile`、`pnpm verify:audio`、`pnpm verify:screens` | 发现并修复 375×553 中文动态滑入时的横向溢出；定点浏览器复现由面板 +6px 变为 0；复跑 24/24、52/52、音频全部 PASS、桌面 11 张 59–60 FPS 且无非预期运行时错误；已看手机、iPad 和桌面截图 |
+| 2026-10-02（手机版生产验收） | `https://battle.ondream.ai/`、`MOBILE_CHECK_URL=https://battle.ondream.ai pnpm verify:mobile` | `20261002-0335-4f903d9`；线上 24/24 PASS，中文竖屏与横屏截图已复看；首页 SHA-256 与发布包一致，音频资源 200 + immutable；发布前后审计只有 Battle 版本指针和版本列表变化，Nginx 未重载 |
 
 每次跑完有意义的验证，往这张表里加一行。
 

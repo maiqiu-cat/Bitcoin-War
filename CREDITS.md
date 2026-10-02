@@ -1,5 +1,8 @@
 # Credits
 
+Original work in this repository is licensed under the PolyForm Noncommercial License 1.0.0
+(see [LICENSE.md](LICENSE.md)). The third-party components below keep their own licenses.
+
 ## Music and sound effects
 
 All music and sound effects in `src/audio/assets/` were composed and rendered for this project

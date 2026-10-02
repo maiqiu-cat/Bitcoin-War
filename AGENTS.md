@@ -14,6 +14,7 @@
 技术栈：Vite 8、TypeScript 7（strict）、Three.js 0.186，纯前端，没有后端。界面支持中文和英文。
 
 - 本地路径：`~/Documents/Bitcoin Battle`（目录名带空格，在 shell 里要加引号）
+- 许可：[PolyForm Noncommercial 1.0.0](LICENSE.md)，可以复制、分发、修改，不可以商用；第三方组件见 CREDITS.md。改许可证由用户决定
 - 远端：<https://github.com/maiqiu-cat/Bitcoin-Battle>（**公开**，`main`）。推送前必须通过 `pnpm check:public`，流程见 [docs/handoff/release-and-publish.md](docs/handoff/release-and-publish.md)
 
 ## 2. 阅读顺序

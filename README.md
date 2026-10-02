@@ -78,3 +78,13 @@ src/ui/*                     HUD（价格、战况条、深度图、流水、交
   - 爆仓：从后方打来的重炮。空头爆仓时炮弹落在熊方阵地，多头爆仓时落在牛方阵地。
   - 期权大单：信号弹。
   - 金额很大的事件会让电影镜头切过去特写。
+
+## 许可
+
+本仓库作者自己的作品（代码、文档、音频、图片）以 [PolyForm Noncommercial License 1.0.0](LICENSE.md) 发布：
+
+- **可以**：复制、分发、修改，用于非商业目的，例如个人学习、研究、爱好项目，以及慈善组织、教育机构、公共研究机构、政府机构的使用。分发时必须附上许可条款（或其网址），以及 `LICENSE.md` 顶部的 `Required Notice` 版权声明。
+- **不可以**：商业用途。需要商业授权请通过 GitHub 联系仓库所有者。
+- 第三方组件（three.js、Inter 字体、MuseScore_General 音色库等）按各自的许可证，见 [CREDITS.md](CREDITS.md)。「Bitcoin Battlefield」和 Newhedge 的名称、标识归其所有者，本许可不授予任何第三方权利。
+
+以上只是摘要，以 [LICENSE.md](LICENSE.md) 英文原文为准。

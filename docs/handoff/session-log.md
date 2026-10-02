@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-10-02 · 会话 14：开源许可与下一次发布的执行手册
+
+- 用户要求：可以复制、分发，但不可以商用。选用 **PolyForm Noncommercial License 1.0.0**（专为软件写的非商业许可：允许复制、分发、修改，仅限非商业用途，分发时须保留 `Required Notice`）。`LICENSE.md` 的正文与 PolyForm 官方仓库、SPDX 的原文逐字一致（两份原文只有换行不同），顶部是 `Required Notice: Copyright 2026 maiqiu-cat (…)`。
+- README 增加「许可」一节（中文摘要，以英文原文为准）；CREDITS.md 注明第三方组件沿用各自许可；`package.json` 的 `license` 为 SPDX `PolyForm-Noncommercial-1.0.0`（保留 `private: true`，不发布到 npm）；AGENTS.md 写明许可。
+- 给 Codex 写了下一次的执行手册（本机 `private/docs/handoff/release-2026-10-02-icons-license.md`）：A 推送本提交到 GitHub，B 发布网站图标（`dcbd6b1`；清理后的第一次发布，Docker 演练必须做，渲染的 HTTPS 配置须与线上 `9f5a4f3f…` 一致），C 只记录摘要并推送。A、B 分别需要用户授权。
+- **没有做**：本提交只在本地，没有推送，由 Codex 按手册推送；没有连接生产服务器。
+
+---
+
 ## 2026-10-02 · 会话 13：把服务器和本机环境信息移出仓库（含历史），重建为公开仓库
 
 - 用户要求：GitHub 私有仓库里也不保留敏感信息，只留在本机。

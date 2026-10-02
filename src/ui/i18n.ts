@@ -88,7 +88,7 @@ const en: Dict = {
 };
 
 const zh: Dict = {
-  'app.title': '比特币战场',
+  'app.title': '比特币战争',
   brand: '比特币战争',
   'x.title': '在 X 上关注 @MagicPower21M',
   'net.offline': '网络已断开',

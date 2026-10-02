@@ -4,7 +4,7 @@
 
 ## 1. 项目一句话
 
-**Bitcoin Battle**：Newhedge「Bitcoin Battlefield」的复刻原型，把实时 BTC 行情做成 3D 牛熊战场。
+**Bitcoin Battle**，中文名**「比特币战争」**：受 Newhedge「Bitcoin Battlefield」启发的独立、非官方实现，与 Newhedge 没有关联，也未获其认可。把实时 BTC 行情做成 3D 牛熊战场。页面标题、manifest 和左上角品牌统一用这两个名字，不要再出现别的译名。
 
 - **价格**：跨交易所按成交量加权聚合出一个价格，它就是战线。
 - **兵力**：盘口挂单换算成士兵和坦克。

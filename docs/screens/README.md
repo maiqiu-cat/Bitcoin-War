@@ -1,6 +1,6 @@
 # 效果截图
 
-由 `pnpm verify:screens` 生成的 PNG 转成 JPG（`sips -s format jpeg -s formatOptions 82`），保存最近一版的代表画面。生成时间：2026-10-01，版本 `0762cb1`（中英文 + 动画升级）。
+由 `pnpm verify:screens` 生成的 PNG 转成 JPG（`sips -s format jpeg -s formatOptions 82`），保存最近一版的代表画面。生成时间：2026-10-01，版本 `a93a39b`（中英文 + 动画升级）。
 
 | 文件 | 内容 |
 | --- | --- |

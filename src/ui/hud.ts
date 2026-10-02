@@ -36,6 +36,7 @@ const ICONS = {
   full: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`,
   soundOn: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>`,
   soundOff: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>`,
+  x: `<svg class="xmark" viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
   warn: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.3v.2"/></svg>`,
 };
 
@@ -55,6 +56,11 @@ export interface BannerSpec {
 }
 
 const html = String.raw;
+
+/** The author's X profile, linked from the top-left (avatar is bundled in public/, no remote image). */
+const X_PROFILE = { url: 'https://x.com/MagicPower21M', name: 'MagicPower ⚡' };
+const xLink = (where: string) =>
+  html`<a class="xlink ${where}" href="${X_PROFILE.url}" target="_blank" rel="noopener noreferrer" data-i18n-title="x.title"><img src="/x-avatar.jpg" alt="" width="22" height="22" /><span class="xname">${X_PROFILE.name}</span>${ICONS.x}</a>`;
 
 /** Exponential approach used for number tweens. */
 const approach = (cur: number, target: number, dt: number, rate = 10) =>
@@ -88,7 +94,10 @@ export class Hud {
     cb: HudCallbacks,
   ) {
     root.innerHTML = html`
-      <div class="brand enter" style="--d:0"><img src="/favicon.svg" alt="" width="34" height="34" /><span data-i18n="brand"></span></div>
+      <div class="masthead enter" style="--d:0">
+        <div class="brand"><img src="/favicon.svg" alt="" width="34" height="34" /><span data-i18n="brand"></span></div>
+        ${xLink('in-masthead')}
+      </div>
 
       <div class="panel tl enter" style="--d:0">
         <div class="regime" data-k="regime"></div>
@@ -117,6 +126,7 @@ export class Hud {
           <div class="bar"><div class="fill" data-k="fill"></div><div class="marker" data-k="marker"></div></div>
           <div class="score" data-k="score"></div>
         </div>
+        ${xLink('under-bar')}
       </div>
 
       <div class="panel side left enter" style="--d:2"><small data-i18n="bidLiq"></small><b data-k="bidLiq">—</b></div>
@@ -190,6 +200,7 @@ export class Hud {
     const root = this.el.price.closest('#hud') ?? document;
     root.querySelectorAll<HTMLElement>('[data-i18n]').forEach((n) => (n.textContent = t(n.dataset.i18n!)));
     root.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach((n) => (n.title = t(n.dataset.i18nTitle!)));
+    root.querySelectorAll<HTMLElement>('.xlink').forEach((n) => n.setAttribute('aria-label', t('x.title')));
     document.documentElement.lang = getLang() === 'zh' ? 'zh-CN' : 'en';
     document.title = t('app.title');
     this.renderStatus(false);
@@ -221,7 +232,7 @@ export class Hud {
   obstacles(now = performance.now()): DOMRect[] {
     if (now - this.obstacleCache.at < 250) return this.obstacleCache.rects;
     const rects: DOMRect[] = [];
-    for (const el of this.root.querySelectorAll<HTMLElement>('.brand, .panel, .top-center .price-row, .top-center .change, .net-alert.show')) {
+    for (const el of this.root.querySelectorAll<HTMLElement>('.brand, .xlink, .panel, .top-center .price-row, .top-center .change, .net-alert.show')) {
       const r = el.getBoundingClientRect();
       if (r.width > 0 && r.height > 0) rects.push(r);
     }

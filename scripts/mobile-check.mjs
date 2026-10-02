@@ -90,6 +90,8 @@ function measure(venues) {
     if (b) blocks[name] = b;
   };
   add('brand', '.brand');
+  add('xlink', '.masthead .xlink');
+  add('xlinkBar', '.top-center .xlink');
   add('caption', '.top-center .caption', true);
   add('price', '.top-center .price-row', true);
   add('change', '.top-center .change');

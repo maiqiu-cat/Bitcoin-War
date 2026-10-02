@@ -9,7 +9,7 @@
 | `pnpm verify:feeds [秒]` | 用 Node 连真实交易所跑 N 秒（默认 45），输出每家的连接次数、断线、消息数、成交数、盘口档数、价差、相对指数的偏差和权重，并做 6 项断言 | 6 项全部 PASS；报告写入 `verification/feeds-report.json` | N 秒 |
 | `pnpm build && pnpm verify:screens` | 启动 vite preview，在无头 Chrome（1600×900）里跑 4 组场景并截图；收集 FPS、单位数、指数、回合、横幅、语言和报错 | 输出 `No runtime errors`（Binance 的 451 和 fstream 报错属于预期，已过滤），FPS 和单位数合理，**人工看过截图**；报告在 `verification/screens-report.json` | 约 2 分钟 |
 | `pnpm build && pnpm verify:audio` | 无头 Chrome，分三部分：A 允许自动播放时不用点击就出声；B0 喇叭按钮首次解锁、静音与恢复；B1–B7 拦截时提示、点击后出声、激战与胜利切换、M 键、无错误；C 用真实资源离线渲染 36 秒场景（`verification/audio-preview.wav`，不入库），要求不爆音、爆炸比配乐底层高 ≥8 dB | 全部 PASS，并且人工听一遍；公网较慢时还须排除模拟行情状态变化造成的假阴性 | 约 1 分钟 |
-| `pnpm build && pnpm verify:mobile` | 无头 Chrome，12 种视口（手机竖屏 5 种含浏览器地址栏后的实际可用高度、手机横屏 3 种、iPad 竖横、1280 笔记本、1440 桌面）× 中英文；先塞满 8 条市场动态和 6 家交易所，再弹出开场横幅，最后显示网络提示（「无法连接到交易所」），测最拥挤的情况。`MOBILE_CHECK_URL=https://battle.ondream.ai` 可直接查线上，`MOBILE_CHECK_ONLY=iphone,landscape` 只跑部分视口（不写报告） | 输出 `MOBILE LAYOUT CHECKS PASSED (24)`：各 HUD 块（含左上角品牌）互不重叠、都在屏幕内、页面不能横向滚动、没有文字溢出、横幅和网络提示不盖住其他块、动态标签宽度 ≥24px、深度轴三个价格间距 ≥4px、无运行时错误；**人工看过** `verification/mobile/*.jpg`；报告在 `verification/mobile-report.json` | 约 2 分钟 |
+| `pnpm build && pnpm verify:mobile` | 无头 Chrome，12 种视口（手机竖屏 5 种含浏览器地址栏后的实际可用高度、手机横屏 3 种、iPad 竖横、1280 笔记本、1440 桌面）× 中英文；先塞满 8 条市场动态和 6 家交易所，再弹出开场横幅，最后显示网络提示（「无法连接到交易所」），测最拥挤的情况。`MOBILE_CHECK_URL=https://battle.ondream.ai` 可直接查线上，`MOBILE_CHECK_ONLY=iphone,landscape` 只跑部分视口（不写报告） | 输出 `MOBILE LAYOUT CHECKS PASSED (24)`：各 HUD 块（含左上角品牌和作者 X 链接）互不重叠、都在屏幕内、页面不能横向滚动、没有文字溢出、横幅和网络提示不盖住其他块、动态标签宽度 ≥24px、深度轴三个价格间距 ≥4px、无运行时错误；**人工看过** `verification/mobile/*.jpg`；报告在 `verification/mobile-report.json` | 约 2 分钟 |
 | `pnpm capture:fixtures [秒]` | 抓真实消息到 `tests/fixtures/_capture/`（已加入 gitignore） | 各交易所都有样本 | N 秒 |
 
 ### `verify:feeds` 的 6 项断言
@@ -69,6 +69,7 @@
 | 2026-10-02（手机版生产验收） | `https://battle.ondream.ai/`、`MOBILE_CHECK_URL=https://battle.ondream.ai pnpm verify:mobile` | `20261002-0335-4f903d9`；线上 24/24 PASS，中文竖屏与横屏截图已复看；首页 SHA-256 与发布包一致，音频资源 200 + immutable；发布前后审计只有 Battle 版本指针和版本列表变化，Nginx 未重载 |
 | 2026-10-02（左上角品牌 + 网络提示） | `pnpm build`、`pnpm test`、`pnpm verify:mobile`、`pnpm verify:screens`；本地预览实时模式端到端 | 58/58 单测；桌面截图 56–59 FPS、0 个非预期运行时错误（只有预期内的 Binance 451）；24/24 PASS（新增网络提示一轮，截图 `*-offline.jpg`），手机竖屏、横屏、桌面截图已人工检查。实时模式：正常连接 16 秒不提示；断网 1.5 秒内显示「网络已断开」，恢复后自动消失；只连 Binance（本机网络 451）时第 8 秒不提示、第 14 秒显示「无法连接到交易所」；切换语言后标题即时变为英文 |
 | 2026-10-02（网站图标版生产验收） | `20261002-0800-918ee68`、线上布局与浏览器核对 | 本机 58/58 单测、24/24 移动布局、桌面截图 60 FPS 且无非预期错误、Docker 演练通过；生产发布前备份并校验，前后审计通过，Nginx 未重载；首页与发布包哈希一致，7 个图标地址 200 且字节一致，线上布局抽查 6/6；正常页 20 秒无提示，仅启用 Binance 约 12 秒出现网络提示，浏览器断网立即显示提示 |
+| 2026-10-02（作者 X 链接） | `pnpm build`、`pnpm test`、`pnpm verify:mobile`、`pnpm verify:screens`；本地预览点击检查 | 58/58 单测；24/24 PASS（X 链接纳入重叠检查，修正前 iPhone SE 竖屏的横幅和网络提示会压到它）；桌面 11 张截图 60 FPS、0 个非预期运行时错误；电脑、iPhone 竖屏、横屏各只显示一个链接，中心点可点击，头像加载正常，点击在新标签页打开 `https://x.com/MagicPower21M` |
 
 每次跑完有意义的验证，往这张表里加一行。
 

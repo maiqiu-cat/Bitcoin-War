@@ -48,7 +48,7 @@
 
 | 文件 | 职责 | 关键导出 | 备注 |
 | --- | --- | --- | --- |
-| `hud.ts` | DOM 覆盖层 | `Hud` `HudCallbacks` `BannerSpec` | 元素通过 `data-k` 引用，`data-i18n` 是静态文案，`data-i18n-title` 是悬停提示。`frame(dt)` 做数字补间。状态播报有防抖。`showBanner()` 接收的是 i18n 键加变量。`setNet(state)` 显示或隐藏网络提示 `.net-alert`。 |
+| `hud.ts` | DOM 覆盖层 | `Hud` `HudCallbacks` `BannerSpec` | 元素通过 `data-k` 引用，`data-i18n` 是静态文案，`data-i18n-title` 是悬停提示。`frame(dt)` 做数字补间。状态播报有防抖。`showBanner()` 接收的是 i18n 键加变量。`setNet(state)` 显示或隐藏网络提示 `.net-alert`。作者 X 链接的地址和昵称在 `X_PROFILE`，头像是 `public/x-avatar.jpg`。 |
 | `i18n.ts` | 中英文字典 | `t()` `setLang()` `getLang()` `onLangChange()` `DICTIONARIES` `Lang` | 语言取值优先级：URL `lang` → `localStorage['bb.lang']` → `navigator.language`。 |
 | `format.ts` | 格式化 | `fmtUsd` `fmtPrice` `fmtTime` | — |
 | `styles.css` | 全部样式 | — | CSS 变量 `--bull` `--bear` `--panel` `--ease`。适配 `prefers-reduced-motion`，宽度 ≤860px 时用窄屏布局。 |

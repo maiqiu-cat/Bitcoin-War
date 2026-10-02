@@ -5,6 +5,7 @@ type Dict = Record<string, string>;
 const en: Dict = {
   'app.title': 'Bitcoin Battle',
   brand: 'Bitcoin Battle',
+  'x.title': 'Follow @MagicPower21M on X',
   'net.offline': "You're offline",
   'net.unreachable': "Can't reach the exchanges",
   'net.check': 'Please check your network connection. Live data reconnects automatically once it is back, or refresh the page to retry.',
@@ -89,6 +90,7 @@ const en: Dict = {
 const zh: Dict = {
   'app.title': '比特币战场',
   brand: '比特币战争',
+  'x.title': '在 X 上关注 @MagicPower21M',
   'net.offline': '网络已断开',
   'net.unreachable': '无法连接到交易所',
   'net.check': '请检查您的网络连接。网络恢复后会自动重新连接，也可以刷新页面重试。',

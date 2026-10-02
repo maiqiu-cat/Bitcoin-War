@@ -2,6 +2,7 @@
 
 这是对 Newhedge「Bitcoin Battlefield」（<https://newhedge.io/bitcoin/battlefield>，推文 <https://x.com/newhedge_io/status/2104903265959760161>）的实现。BTC 价格就是战线，盘口挂单就是兵力，主动成交、爆仓和期权成交会变成战场上的炮击。
 
+- **许可**：[PolyForm Noncommercial 1.0.0](LICENSE.md)。可以复制、分发、修改，**不可以商用**，详见文末「[许可](#许可)」
 - 可行性结论和验证证据：[docs/research/feasibility.md](docs/research/feasibility.md)
 - **接手开发（人或 agent）请先读 [AGENTS.md](AGENTS.md)**，全部文档索引在 [docs/README.md](docs/README.md)
 

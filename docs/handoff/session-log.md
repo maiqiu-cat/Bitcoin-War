@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-10-03 · 会话 21：访问统计生产发布
+
+- 用户授权按本机手册发布。发布前本地、`origin/main` 和 GitHub `main` 均为 `369cae7`；相对线上版本仅有 `src/analytics.ts` 和 `src/main.ts` 两个源码文件变化，`deploy/` 未改。由干净提交打包 `20261002-2356-369cae7`，发布包 SHA-256 `6744c751f7c5a3ed2728192f7f4a83120073ff899ee70eb827fb2d88fed0fc9e`。发布包相对上一版仅入口 HTML 和脚本文件变化。
+- 本机 `pnpm test` 63/63、`verify:mobile` 24/24、`verify:screens` 60 FPS 且无非预期运行时错误；本地预览未加载统计脚本，相关截图已人工查看。Docker 演练 `REHEARSAL PASSED`。生产发布前备份本站及其配置，并解包核对旧版首页、版本链接及配置哈希。
+- 发布前配置和首页哈希均与手册基线相符；`preflight` 与发布前后 `audit` 均通过。部署仅切换本站版本，Nginx 未重载；审计只有 `current / previous / releases` 三行变化。公网首页 SHA-256 与发布包同为 `258a9f2e6ce7847afba3f04036399a1fed362a90c8ecd5c1985daf37ee10544c`，线上脚本与发布包一致且包含预期统计 token 一次，头像仍返回 `200 image/jpeg`。
+- 线上中英文布局抽查 6/6；无头及真实 Chrome 均观察到 `beacon.min.js` 返回 200，统计请求返回 204 且无请求失败。发布后约数分钟，Cloudflare 仪表盘在排除自动程序的条件下显示 1 次访问、1 次页面浏览。发布记录仅本地提交，未获本次 GitHub 推送授权。
+
+---
+
 ## 2026-10-03 · 会话 20：产品名统一生产发布
 
 - 用户授权先备份再发布。发布前本地、`origin/main` 和 GitHub `main` 均为 `0f49e9e`，相对线上版本只有标题、品牌、manifest、favicon 标题四处网站文件变更，`deploy/` 未改。由干净提交打包 `20261002-2326-0f49e9e`，发布包 SHA-256 `bb8ad277dacd6c7106926977e3ba2e4550074c99eb089b7e8f4b738f80613688`。

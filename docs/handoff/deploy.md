@@ -1,6 +1,6 @@
 # 发布到 battle.ondream.ai
 
-> **状态（2026-10-03）：产品名统一版已发布。** `https://battle.ondream.ai/`，当前版本 `20261002-2326-0f49e9e`，源码 `0f49e9e`；上一版 `20261002-1153-c999c6c` 保留，可通过 `rollback` 切回。这仍是浏览器直连交易所的原型；正式产品仍需服务端聚合和数据条款审查。生产验收及限制见 [session-log.md](session-log.md)。
+> **状态（2026-10-03）：访问统计版已发布。** `https://battle.ondream.ai/`，当前版本 `20261002-2356-369cae7`，源码 `369cae7`；上一版 `20261002-2326-0f49e9e` 保留，可通过 `rollback` 切回。这仍是浏览器直连交易所的原型；正式产品仍需服务端聚合和数据条款审查。生产验收及限制见 [session-log.md](session-log.md)。
 
 ## 服务器资料只在本机（`private/`，不入库）
 
@@ -99,7 +99,7 @@ SSH 不通时的备选办法见 `private/docs/handoff/deploy.md`。
 
 | 目的 | 命令（在服务器上，在任意一个已解压的发布包目录里执行） |
 | --- | --- |
-| 回到上一版（第二次及以后发布） | `bash $DEPLOY_ROOT/battle-20261002-2326-0f49e9e/install.sh rollback`；当前可切回 `20261002-1153-c999c6c`，并自动校验首页与静态资源 |
+| 回到上一版（第二次及以后发布） | `bash $DEPLOY_ROOT/battle-20261002-2356-369cae7/install.sh rollback`；当前可切回 `20261002-2326-0f49e9e`，并自动校验首页与静态资源 |
 | 完全回退到基线（带验证） | `bash battle-<id>/install.sh purge`：删除配置、验证 `nginx -T` 指纹与基线一致、比对每个站点、删除文件和证书（`KEEP_CERT=1` 时保留证书） |
 | 应急（脚本不可用时） | `rm /etc/nginx/conf.d/zz-battle.ondream.ai.conf && nginx -t && systemctl reload nginx` |
 | DNS | 在 DNS 服务商删除 `battle` 这条 A 记录 |

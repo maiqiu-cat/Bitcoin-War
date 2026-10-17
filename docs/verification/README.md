@@ -31,6 +31,19 @@
 
 截图存为 `verification/<运行>-<编号>.png`，不入库。要长期保留的，用 `sips -s format jpeg` 转成 JPG 放进 `docs/screens/`。
 
+### 安装器的标签恢复控制流
+
+在独立 Linux 容器里运行，检查恢复失败或工具缺失时仍保留旧版本，以及启用/禁用策略时的正常发布路径：
+
+```bash
+docker run --rm \
+  -v "$PWD/deploy/server/install.sh:/installer.sh:ro" \
+  -v "$PWD/deploy/test/selinux-labels.sh:/check.sh:ro" \
+  ubuntu:24.04 bash /check.sh /installer.sh
+```
+
+预期 `SELINUX LABEL FLOW CHECKS PASSED (5)`。测试模拟 SELinux 命令，只验证切换前的阻断与调用范围；真实标签须在发布验收中另行核对。完整发布及回滚仍运行 `deploy/test/rehearse.sh`。
+
 ## 2. 单测清单（`tests/`）
 
 | 文件 | 覆盖内容 |

@@ -270,6 +270,15 @@ verify() {
   log "verify OK over $scheme: index.html matches release $(readlink "$SITE/current"), assets cached immutable${audio:+, audio asset served intact}"
 }
 
+restore_web_labels() {
+  # cp -a preserves staging labels. Apply the destination policy before activation.
+  if [ -e /sys/fs/selinux/enforce ] || { command -v getenforce >/dev/null 2>&1 && [ "$(getenforce)" != Disabled ]; }; then
+    command -v restorecon >/dev/null 2>&1 || die "SELinux is enabled but restorecon is missing"
+    restorecon -R "$1" || die "could not restore SELinux labels; release not switched"
+    log "SELinux labels restored for $(basename "$1")"
+  fi
+}
+
 deploy() {
   preflight
   baseline
@@ -280,6 +289,7 @@ deploy() {
   chown -R root:root "$SITE/releases/$REL" # kits built on macOS carry uid 501 / gid 20
   find "$SITE/releases/$REL" -type d -exec chmod 755 {} +
   find "$SITE/releases/$REL" -type f -exec chmod 644 {} +
+  restore_web_labels "$SITE/releases/$REL"
   install -d -m 700 "$STATE"
   local prev
   prev=$(readlink "$SITE/current" 2>/dev/null || true)

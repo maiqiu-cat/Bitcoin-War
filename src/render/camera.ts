@@ -38,7 +38,10 @@ export class CameraRig {
   private time = 0;
   private seedZ = 0;
   private shakeAmt = 0;
+  private shakePhase = 0;
   private shakeOffset = new THREE.Vector3();
+  /** Scripted shots pull back by this factor on upright screens so both bases fit. */
+  private distK = 1;
   onModeChange?: (cinematic: boolean) => void;
 
   constructor(
@@ -110,6 +113,11 @@ export class CameraRig {
     this.shakeAmt = Math.min(2.2, this.shakeAmt + amount);
   }
 
+  /** Viewport aspect ratio: portrait screens see the field from further back. */
+  setAspect(aspect: number) {
+    this.distK = aspect >= 1 ? 1 : Math.min(1.5, (1 / aspect) ** 0.4);
+  }
+
   update(dt: number, c: DirectorContext) {
     this.time += dt;
     // remove last frame's shake so it never accumulates into the controls
@@ -123,6 +131,7 @@ export class CameraRig {
       if (this.shotT >= 1) this.nextShot();
       const k = Math.min(1, this.shotT);
       this.shot.pose(k * k * (3 - 2 * k), c, this.tmp);
+      if (this.distK !== 1) this.tmp.pos.sub(this.tmp.look).multiplyScalar(this.distK).add(this.tmp.look);
       const a = 1 - Math.exp(-dt * (this.shotT < 0.15 ? 1.4 : 2.6));
       this.pos.lerp(this.tmp.pos, a);
       this.look.lerp(this.tmp.look, a);
@@ -135,9 +144,12 @@ export class CameraRig {
         this.look.z + Math.cos(t * 0.47) * 0.3,
       );
     }
+    // damped oscillation (a few Hz) instead of per-frame white noise
     this.shakeAmt *= Math.exp(-dt * 5);
-    const s = this.shakeAmt;
-    this.shakeOffset.set((Math.random() - 0.5) * s, (Math.random() - 0.5) * s * 0.6, (Math.random() - 0.5) * s);
+    this.shakePhase += dt;
+    const s = this.shakeAmt * 0.5;
+    const ph = this.shakePhase * Math.PI * 2;
+    this.shakeOffset.set(Math.sin(ph * 9) * s, Math.sin(ph * 13 + 1.3) * s * 0.6, Math.cos(ph * 11 + 2.1) * s);
     this.camera.position.add(this.shakeOffset);
   }
 

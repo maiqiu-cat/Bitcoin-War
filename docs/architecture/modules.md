@@ -26,14 +26,15 @@
 
 | 文件 | 职责 | 关键导出 | 备注 |
 | --- | --- | --- | --- |
-| `world.ts` | 场景总装和每帧驱动 | `World` `WorldOptions{shadows, pixelRatio, post}` | 主要方法：`setRound`、`setPrice`、`setLayout`、`setActivity`、`onMarketEvent`、`celebrate`、`setLighting`、`frame`。还负责前线对射、硝烟、震屏判定和 CSS2D 标签。 |
+| `world.ts` | 场景总装和每帧驱动 | `World` `WorldOptions{post, quality}` `applyQuality()` | 主要方法：`setRound`、`setPrice`、`setLayout`、`setActivity`、`onMarketEvent`、`celebrate`、`setLighting`、`frame`。还负责前线对射、硝烟、震屏判定和 CSS2D 标签。 |
 | `terrain.ts` | 棋盘地形 | `Terrain` `groundHeight()` `BOARD_W/D` `ROAD_Z` `BULL/BEAR_BASE_X` `LAKES` `mergeSimple()` | 地面材质通过 `onBeforeCompile` 注入领土着色、云影、战线发光、流光脉冲和闪光。棋盘侧面是沿地形边缘生成的「裙边」。树做了实例化，带风摆。`setField()` 重建价格刻度。 |
 | `units.ts` | 士兵和坦克 | `ArmyRenderer` `Unit` | 士兵最多 5000、坦克最多 220 个实例。每个单位有四种阶段：`alive`、`knocked`、`dying`、`retreating`。顶点着色器负责摆腿和后坐，`customDepthMaterial` 让阴影也跟着动。回调：`onKilled`、`onDust`。 |
-| `effects.ts` | 特效池 | `Effects` | 包括：火焰粒子（6000，加法混合，HDR×2.6）、烟雾粒子（3000）、炮弹（40）、冲击环（16）、闪光灯（4）、曳光弹（240，实例化）、碎块（400，实例化）、焦痕（40，贴合地形）。 |
+| `effects.ts` | 特效池 | `Effects` | 包括：火焰粒子（6000，加法混合，HDR×2.6）、烟雾粒子（3000，噪声贴图轮廓 + 太阳方向明暗）、炮弹（40）、冲击环（16）、闪光灯（4）、曳光弹（240，实例化）、碎块（400，实例化）、焦痕（40，贴合地形）、烟花（24）。粒子是 billboard 四边形实例，存活压缩，只上传和绘制存活区间。 |
 | `bases.ts` | 两端基地 | `Bases` `TEAM_COLORS` `BASE_CENTER` | 村庄做了实例化，另有指挥部、旗帜（顶点波动）、围栏、发光胜利线、夜间点光源。夺旗动画：`capture(loser, winner)` 降旗、换色、升旗；`reset()` 恢复原色。 |
 | `lighting.ts` | 光照预设和天空 | `Lighting` `PRESETS` `autoLighting()` `LightingName` | 三套预设 `golden`、`day`、`night`，每套同时包含后期参数（泛光、调色、暗角）、硝烟颜色和云影强度。 |
 | `camera.ts` | 镜头 | `CameraRig` `DirectorContext` | 手动模式用 OrbitControls，加 WASD 和 Q/E。电影模式有 6 种镜头轮换，大事件时切特写（`focusEvent`），另有 `shake()` 和手持感漂移。 |
-| `post.ts` | 后期处理 | `PostFX` | 顺序：RenderPass(4×MSAA, HalfFloat) → UnrealBloom → Finish（移轴、饱和度、色温、暗角）→ OutputPass。用 `setCinematic()` 切换移轴强度。 |
+| `post.ts` | 后期处理 | `PostFX` | 场景 → HalfFloat 目标（MSAA 可调）→ 泛光链（`UnrealBloomPass` 子类，不做最后的混合）→ 一个 Finish pass（叠加泛光、移轴、饱和度、色温、暗角、ACES、sRGB）直出画布（ADR 0009）。`setSamples()`、`setBloom()`、`tiltEnabled` 供画质档位切换，`setCinematic()` 切换移轴强度。 |
+| `quality.ts` | 画质分档与自适应 | `qualityFor()` `initialLevel()` `QualityGovernor` `QualitySettings` | 纯逻辑：5 个档位（像素比、MSAA、阴影图大小和更新间隔、泛光、移轴），调节器按 rAF 间隔中位数升降档。`main.ts` 每帧喂数据，`World.applyQuality()` 执行。单测 `tests/quality.test.ts`。 |
 
 ## src/audio：配乐和音效（详见 [docs/audio/README.md](../audio/README.md)）
 

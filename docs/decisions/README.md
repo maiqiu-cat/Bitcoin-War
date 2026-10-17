@@ -10,5 +10,6 @@
 | [0004](0004-depth-to-armies.md) | 深度到兵力：前线排、方阵、坦克、储备，key 稳定 | 采用 |
 | [0005](0005-instanced-units-shader-anim.md) | 单位用 InstancedMesh，肢体动画放在顶点着色器里 | 采用 |
 | [0006](0006-i18n-keys.md) | 逻辑层只产出 i18n 键，不产出文案；中英两份字典由测试保证一致 | 采用 |
-| [0007](0007-hdr-postprocessing.md) | HDR 后期（Bloom、移轴），发光靠提高颜色亮度，不靠降低阈值 | 采用 |
+| [0007](0007-hdr-postprocessing.md) | HDR 后期（Bloom、移轴），发光靠提高颜色亮度，不靠降低阈值 | 采用（管线实现见 0009） |
 | [0008](0008-local-assets-no-cdn.md) | 字体等资源本地打包，不依赖 Google Fonts 和 CDN | 采用 |
+| [0009](0009-single-pass-post-adaptive-quality.md) | 单 pass 后期合成、紧凑 billboard 粒子、画质分档与自适应调节 | 采用 |

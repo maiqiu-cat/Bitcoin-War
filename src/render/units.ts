@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { UnitKind, UnitTarget } from '../game/armies';
 import type { Team } from '../game/battle';
 import { TEAM_COLORS } from './bases';
@@ -40,7 +41,8 @@ function merge(parts: THREE.BufferGeometry[]) {
     }
     out.setAttribute(name, new THREE.BufferAttribute(arr, size));
   }
-  return out;
+  // Index the merged boxes: 324 → 216 vertices per soldier, a third fewer vertex-shader runs in both passes.
+  return mergeVertices(out);
 }
 
 function soldierGeometry() {
@@ -101,7 +103,11 @@ function unitMaterial(uTime: { value: number }) {
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${UNIT_VERTEX_BODY}`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying float vFlash;')
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.78, 0.5) * vFlash * 1.4;');
+      .replace(
+        '#include <emissivemap_fragment>',
+        // hit flash: the unit's own colour pushed towards warm white, so bulls flash green-white and bears red-white
+        '#include <emissivemap_fragment>\ntotalEmissiveRadiance += mix(diffuseColor.rgb * 2.2, vec3(1.0, 0.9, 0.72), 0.45) * vFlash * 1.3;',
+      );
   };
   return mat;
 }
@@ -169,7 +175,8 @@ export class ArmyRenderer {
   private s = new THREE.Vector3();
   private zero = new THREE.Matrix4().makeScale(0, 0, 0);
   private seq = 0;
-  private list: Unit[] | null = null;
+  /** Alive, idle front-row units per team (refreshed every frame): candidates for rifle fire. */
+  private frontIdle: Record<Team, Unit[]> = { bulls: [], bears: [] };
   onKilled?: (x: number, y: number, z: number, team: Team) => void;
   onDust?: (x: number, y: number, z: number) => void;
 
@@ -264,7 +271,6 @@ export class ArmyRenderer {
     }
     this.soldiers.instanceColor!.needsUpdate = true;
     this.tanks.instanceColor!.needsUpdate = true;
-    this.list = null;
   }
 
   /** Knock down alive units of `team` around a point (artillery hit); they get back up. */
@@ -300,16 +306,10 @@ export class ArmyRenderer {
     return best;
   }
 
-  /** Random front-line soldier (for rifle fire). */
+  /** Random idle front-row unit of a team (for rifle fire); null while the front is still moving up. */
   randomFrontSoldier(team: Team): Unit | null {
-    const arr = (this.list ??= [...this.units.values()]);
-    const n = arr.length;
-    if (!n) return null;
-    for (let i = 0; i < 10; i++) {
-      const u = arr[Math.floor(Math.random() * n)];
-      if (u.team === team && u.phase === 'alive' && u.frontRow !== undefined && u.frontRow < 2 && u.moving < 0.3) return u;
-    }
-    return null;
+    const arr = this.frontIdle[team];
+    return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null;
   }
 
   /** World position of the weapon muzzle. */
@@ -328,7 +328,14 @@ export class ArmyRenderer {
     const toFree: Unit[] = [];
     const animS = this.animS.array as Float32Array;
     const animT = this.animT.array as Float32Array;
+    let highS = -1;
+    let highT = -1;
+    this.frontIdle.bulls.length = 0;
+    this.frontIdle.bears.length = 0;
     for (const u of this.units.values()) {
+      if (u.kind === 'tank') highT = Math.max(highT, u.slot);
+      else highS = Math.max(highS, u.slot);
+      if (u.phase === 'alive' && u.frontRow !== undefined && u.frontRow < 2 && u.moving < 0.3) this.frontIdle[u.team].push(u);
       u.pt += dt;
       u.age += dt;
       u.fire = Math.max(0, u.fire - dt * (u.kind === 'tank' ? 2.5 : 7));
@@ -403,12 +410,14 @@ export class ArmyRenderer {
       (u.kind === 'tank' ? this.tanks : this.soldiers).setMatrixAt(u.slot, this.zero);
       (u.kind === 'tank' ? this.freeT : this.freeS).push(u.slot);
       this.units.delete(u.key);
-      this.list = null;
     }
-    this.soldiers.instanceMatrix.needsUpdate = true;
-    this.tanks.instanceMatrix.needsUpdate = true;
-    this.animS.needsUpdate = true;
-    this.animT.needsUpdate = true;
+    // Draw and upload only up to the highest slot in use (the capacity is 5000 / 220 slots).
+    this.soldiers.count = highS + 1;
+    this.tanks.count = highT + 1;
+    upload(this.soldiers.instanceMatrix, (highS + 1) * 16);
+    upload(this.tanks.instanceMatrix, (highT + 1) * 16);
+    upload(this.animS, (highS + 1) * 4);
+    upload(this.animT, (highT + 1) * 4);
   }
 
   clear() {
@@ -417,8 +426,17 @@ export class ArmyRenderer {
       (u.kind === 'tank' ? this.freeT : this.freeS).push(u.slot);
     }
     this.units.clear();
-    this.list = null;
+    this.frontIdle.bulls.length = 0;
+    this.frontIdle.bears.length = 0;
   }
+}
+
+/** Mark the first `count` floats of an instanced attribute for upload. */
+function upload(attr: THREE.InstancedBufferAttribute, count: number) {
+  if (count <= 0) return; // nothing drawn, nothing to send (an empty range list would upload everything)
+  attr.clearUpdateRanges();
+  attr.addUpdateRange(0, count);
+  attr.needsUpdate = true;
 }
 
 function lerpAngle(a: number, b: number, t: number) {

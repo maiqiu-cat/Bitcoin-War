@@ -59,7 +59,7 @@ pnpm build && pnpm verify:mobile # 12 种手机/平板/电脑尺寸 × 中英文
 ```
 src/data/       行情：交易所解析与连接、订单簿、MarketHub（指数、事件、深度）、模拟行情
 src/game/       纯逻辑：回合与播报、价格→坐标、深度→兵力布局（全部可单测，不依赖 DOM 和 three）
-src/render/     Three.js：World 总装、地形、兵力、特效、基地、光照、镜头、后期
+src/render/     Three.js：World 总装、地形、兵力、特效、基地、光照、镜头、后期、画质分档与自适应（quality.ts，纯逻辑有单测）
 src/ui/         HUD、i18n 字典、格式化
 src/audio/      音频引擎；src/audio/assets/ 是预渲染的配乐和音效（m4a + manifest.json），见 docs/audio/README.md
 tools/audio/    生成配乐和音效的 Python 管线（MuseScore_General 音色库，MIT），见 tools/audio/README.md
@@ -79,7 +79,7 @@ docs/           全部开发文档（见 docs/README.md）
 2. **界面文案不写死**：一律用 `t('key')`，`zh` 和 `en` 两份字典都要补齐。`tests/i18n.test.ts` 会检查两边键集合和占位符是否一致。逻辑层只返回键，例如 `narrate()` 返回 `StatusKey`，`FeedItem.type` 也是键。
 3. **前线波动函数有两份，必须同步**：`src/game/field.ts` 里的 `frontWave()`（JS）和 `FRONT_WAVE_GLSL`（着色器）。只改一边，士兵就会站不到战线上。
 4. **单位动画在着色器里做**：几何体上有 `aPart` 属性（0 身体，1 左腿，2 右腿，3 手臂和枪，4 炮塔，5 炮管），实例属性 `aAnim = (phase, moving, fire, flash)`。给士兵或坦克加部件时要标对 `aPart`，详见渲染文档。
-5. **要发光就给 HDR 颜色**：后期管线是 HalfFloat → Bloom → 移轴、暗角 → OutputPass（色调映射）。要让 Bloom 起作用，颜色必须超过阈值，可以用 `color.multiplyScalar(n)` 或调 shader 里的 intensity。不要靠调低阈值来解决，那样会让白天的白墙发光。
+5. **要发光就给 HDR 颜色**：后期管线是 HalfFloat 场景目标 → 泛光链 → 一个 Finish pass（叠加泛光、移轴、暗角、色调映射）直出画布（ADR 0009）。要让 Bloom 起作用，颜色必须超过阈值，可以用 `color.multiplyScalar(n)` 或调 shader 里的 intensity。不要靠调低阈值来解决，那样会让白天的白墙发光。自定义 `ShaderMaterial` 的片元末尾要带 `#include <tonemapping_fragment>` 和 `#include <colorspace_fragment>`，后期关闭时颜色才正确。粒子走 `Effects.fire/smoke`（billboard 四边形，存活压缩），不要新建 `Points`。
 6. **`src/game/` 不准引入 `three` 和 DOM**，保持可测试。
 7. **依赖要克制**：目前运行时依赖只有 `three` 和 `@fontsource-variable/inter`。字体必须本地打包，国内网络加载不了 Google Fonts。
 8. **新增画面事件时也要配上声音**：在 `world.ts` 里调用 `this.audio?.xxx(...)`，经过 `ear()` 做空间化，并在 `AudioEngine` 的限流配置里给它一个上限。

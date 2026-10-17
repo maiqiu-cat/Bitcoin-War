@@ -11,6 +11,7 @@ import { DEFAULT_LAYOUT, layoutArmies, niceUsd } from './game/armies';
 import { BattleEngine, narrate } from './game/battle';
 import { FieldMap } from './game/field';
 import { autoLighting, type LightingName } from './render/lighting';
+import { initialLevel, MAX_LEVEL, QualityGovernor, qualityFor } from './render/quality';
 import { World } from './render/world';
 import { fmtPrice } from './ui/format';
 import { Hud } from './ui/hud';
@@ -19,7 +20,16 @@ import { Hud } from './ui/hud';
 loadAnalytics(); // production host only
 const params = new URLSearchParams(location.search);
 const simMode = params.has('sim');
-const quality = params.get('q') ?? 'high';
+/*
+ * Quality: `q=low` is the fixed cheap mode (no post-processing, no shadows, pixel ratio 1);
+ * `q=1`..`q=5` pins a tier; `q=high` pins the top tier; no `q` starts at the device's default tier
+ * and lets the governor move down (and back up) with the measured frame rate.
+ */
+const qParam = params.get('q');
+const lowQuality = qParam === 'low';
+const device = { dpr: window.devicePixelRatio || 1, touch: matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1 };
+const pinnedLevel = qParam === 'high' ? MAX_LEVEL : qParam && /^[1-5]$/.test(qParam) ? Number(qParam) : null;
+const startLevel = pinnedLevel ?? initialLevel(device);
 const halfRange = Number(params.get('range') ?? 0.25) / 100;
 const sources = (params.get('sources')?.split(',') as ExchangeId[] | undefined) ?? ALL_SOURCES;
 
@@ -32,10 +42,10 @@ feeds.forEach((f) => f.start());
 
 /* ------------------------------------------------------------------- World */
 const world = new World(document.getElementById('app')!, {
-  shadows: quality !== 'low',
-  pixelRatio: Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : 2),
-  post: quality !== 'low' && params.get('post') !== '0',
+  post: !lowQuality && params.get('post') !== '0',
+  quality: lowQuality ? { pixelRatio: 1, samples: 0, shadowSize: 0, shadowInterval: 1, bloom: false, tilt: false } : qualityFor(startLevel, device),
 });
+const governor = !lowQuality && pinnedLevel === null ? new QualityGovernor({ level: startLevel }) : null;
 const battle = new BattleEngine({ halfRange });
 
 /* ------------------------------------------------------------------- Audio */
@@ -212,13 +222,21 @@ function tick() {
 setInterval(tick, 250);
 
 /* --------------------------------------------------------------- Rendering */
-const stats = { fps: 0, frames: 0, layoutUnits: 0 };
+const stats = { fps: 0, frames: 0, layoutUnits: 0, quality: lowQuality ? 0 : startLevel };
 let last = performance.now();
 let fpsAcc = 0;
 let fpsN = 0;
 function frame(t: number) {
-  const dt = Math.min(0.05, (t - last) / 1000);
+  const elapsed = t - last;
+  const dt = Math.min(0.05, elapsed / 1000);
   last = t;
+  if (governor && !document.hidden) {
+    const level = governor.sample(elapsed);
+    if (level !== null) {
+      stats.quality = level;
+      world.applyQuality(qualityFor(level, device));
+    }
+  }
   world.frame(dt);
   hud.frame(dt);
   audio.frame(dt);
@@ -234,4 +252,4 @@ function frame(t: number) {
 requestAnimationFrame(frame);
 
 // Debug/verification hook (used by scripts/screenshot.mjs).
-Object.assign(window, { __bb: { hub, battle, world, hud, stats, sim: simMode, army: () => world.army.stats, audio, renderPreview } });
+Object.assign(window, { __bb: { hub, battle, world, hud, stats, sim: simMode, army: () => world.army.stats, audio, renderPreview, device, governor } });

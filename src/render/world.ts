@@ -12,14 +12,18 @@ import { CameraRig } from './camera';
 import { Effects } from './effects';
 import { Lighting, PRESETS, type LightingName } from './lighting';
 import { PostFX } from './post';
+import type { QualitySettings } from './quality';
 import { groundHeight, ROAD_Z, Terrain } from './terrain';
 import { ArmyRenderer } from './units';
 
 export interface WorldOptions {
-  shadows: boolean;
-  pixelRatio: number;
+  /** HDR post-processing pipeline (bloom, tilt-shift, grade). Off = plain forward rendering. */
   post: boolean;
+  quality: QualitySettings;
 }
+
+const BASE_FOV = 42;
+const LABEL_POOL = 12;
 
 const tmp = new THREE.Vector3();
 const tmp2 = new THREE.Vector3();
@@ -47,13 +51,20 @@ export class World {
   private amp = 2;
   private time = 0;
   private hazeT = 0;
-  private flash = { color: new THREE.Color(), k: 0 };
+  private flash = { color: new THREE.Color(), k: 0, at: -1 };
   private frontLabel: CSS2DObject;
   private reserveLabels: Record<Team, CSS2DObject>;
+  /** Reserve label sizes, measured when their text changes (reading them every frame forces a layout). */
+  private reserveSize: Record<Team, { w: number; h: number; dirty: boolean }> = { bulls: { w: 0, h: 0, dirty: true }, bears: { w: 0, h: 0, dirty: true } };
+  /** Pooled floating event labels (DOM nodes are reused, not created per event). */
+  private floatPool: { obj: CSS2DObject; div: HTMLDivElement; until: number }[] = [];
+  quality: QualitySettings;
+  private shadowTick = 0;
+  private sunView = new THREE.Vector3();
   /** Screen rectangles the reserve labels must not sit under (the HUD panels). */
   labelObstacles?: () => DOMRect[];
   private activity = { buyPerSec: 0, sellPerSec: 0 };
-  private celebrations: { at: number; team: Team }[] = [];
+  private celebrations: { at: number; team: Team; kind: 'launch' | 'pop'; p: THREE.Vector3 }[] = [];
   private teamGlow: Record<Team, THREE.Color> = {
     bulls: new THREE.Color(TEAM_COLORS.bulls.glow),
     bears: new THREE.Color(TEAM_COLORS.bears.glow),
@@ -61,23 +72,30 @@ export class World {
   readonly frontFn = (z: number) => this.frontX(z);
 
   constructor(private readonly container: HTMLElement, opts: WorldOptions) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: !opts.post, powerPreference: 'high-performance', preserveDrawingBuffer: true });
-    this.renderer.setPixelRatio(opts.pixelRatio);
+    const q = opts.quality;
+    this.quality = q;
+    // No preserveDrawingBuffer: nothing reads the canvas back, and it costs a copy per frame.
+    this.renderer = new THREE.WebGLRenderer({ antialias: !opts.post, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(q.pixelRatio);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.shadowMap.enabled = opts.shadows;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = q.shadowSize > 0;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    // The sun is fixed per preset, so the shadow map is refreshed every `shadowInterval` frames by frame().
+    this.renderer.shadowMap.autoUpdate = false;
     container.appendChild(this.renderer.domElement);
 
     this.labels = new CSS2DRenderer();
     this.labels.domElement.className = 'labels-layer';
     container.appendChild(this.labels.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.5, 4000);
+    this.camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.5, 4000);
     this.rig = new CameraRig(this.camera, this.labels.domElement);
-    this.lighting = new Lighting(this.scene, this.renderer, opts.shadows);
+    this.lighting = new Lighting(this.scene, this.renderer, q.shadowSize);
     this.scene.add(this.terrain.group, this.bases.group, this.army.group, this.effects.group);
-    this.post = opts.post ? new PostFX(this.renderer, this.scene, this.camera) : null;
+    this.post = opts.post ? new PostFX(this.renderer, this.scene, this.camera, q.samples) : null;
+    this.post?.setBloom(q.bloom);
+    if (this.post) this.post.tiltEnabled = q.tilt;
     this.post?.setCinematic(this.rig.cinematic);
     this.rig.onModeChange = (on) => {
       this.post?.setCinematic(on);
@@ -124,9 +142,31 @@ export class World {
     this.renderer.setSize(w, h);
     this.labels.setSize(w, h);
     this.post?.setSize(w, h, this.renderer.getPixelRatio());
-    this.camera.aspect = w / h;
+    const aspect = w / h;
+    this.camera.aspect = aspect;
+    // Upright screens: widen the vertical view (and the rig pulls the shots back) so more of the
+    // field fits; a phone in portrait otherwise sees ~20° of it.
+    const widen = aspect >= 1 ? 1 : Math.min(1.6, (1 / aspect) ** 0.5);
+    this.camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2)) * widen));
     this.camera.updateProjectionMatrix();
-    this.effects.setViewportHeight(h * this.renderer.getPixelRatio());
+    this.rig.setAspect(aspect);
+    this.effects.setViewport(h * this.renderer.getPixelRatio(), this.camera.fov);
+  }
+
+  /** Switch render quality at runtime (pixel ratio, MSAA, shadows, bloom, tilt-shift). */
+  applyQuality(q: QualitySettings) {
+    this.quality = q;
+    if (this.renderer.getPixelRatio() !== q.pixelRatio) {
+      this.renderer.setPixelRatio(q.pixelRatio);
+      this.resize();
+    }
+    if (this.post) {
+      this.post.setSamples(q.samples);
+      this.post.setBloom(q.bloom);
+      this.post.tiltEnabled = q.tilt;
+    }
+    this.lighting.setShadows(q.shadowSize);
+    this.shadowTick = q.shadowInterval;
   }
 
   setRound(field: FieldMap, round: Round, price: number) {
@@ -148,11 +188,18 @@ export class World {
 
   setPrice(price: number) {
     if (this.targetPrice && price !== this.targetPrice) {
-      // flash the front line in the colour of whoever just gained ground
+      // Pulse the front line in the colour of whoever just gained ground. Strength is relative to
+      // the round's width (a tick worth 6% of it is a full pulse) and a side can pulse at most 4×/s,
+      // otherwise live ticks keep the whole field tinted.
       const team: Team = price > this.targetPrice ? 'bulls' : 'bears';
-      const strength = Math.min(1, Math.abs(price - this.targetPrice) / 8);
-      this.flash.color.copy(this.teamGlow[team]);
-      this.flash.k = Math.max(this.flash.k, 0.35 + strength * 1.2);
+      const width = this.round ? this.round.bullsWinAt - this.round.bearsWinAt : price * 0.005;
+      const strength = Math.min(1, Math.abs(price - this.targetPrice) / (width * 0.06));
+      const k = 0.2 + strength * 0.8;
+      if (this.time - this.flash.at >= 0.25 || k > this.flash.k) {
+        this.flash.color.copy(this.teamGlow[team]);
+        this.flash.k = Math.max(this.flash.k, k);
+        this.flash.at = this.time;
+      }
     }
     this.targetPrice = price;
   }
@@ -172,9 +219,13 @@ export class World {
       const dir = team === 'bulls' ? 1 : -1;
       const baseX = team === 'bulls' ? this.field.bullBaseX : this.field.bearBaseX;
       const el = this.reserveLabels[team].element;
-      el.innerHTML =
+      const html =
         `<b>${t(`reserve.${team}`)}</b><span>≈${fmtUsd(s.reserveUsd)}</span>` +
         `<small>${t('reserve.units', { n: s.reserveSoldiers.toLocaleString(), k: s.reserveTanks })}</small>`;
+      if (html !== el.innerHTML) {
+        el.innerHTML = html;
+        this.reserveSize[team].dirty = true;
+      }
       this.reserveLabels[team].position.set(baseX - dir * 7, groundHeight(baseX, -20) + 6, -20);
     }
   }
@@ -260,23 +311,44 @@ export class World {
     // Skip labels the screen edge would cut in half (frequent on an upright phone).
     const v = tmp2.set(p.x, p.y + 3, p.z).project(this.camera);
     if (v.z > 1 || Math.abs(v.x) > 1 - 72 / Math.max(1, this.container.clientWidth)) return;
-    const div = document.createElement('div');
+    // Reuse a free pooled node, else the one that expires first.
+    let slot = this.floatPool.find((x) => x.until <= this.time);
+    if (!slot && this.floatPool.length < LABEL_POOL) {
+      const div = document.createElement('div');
+      slot = { obj: new CSS2DObject(div), div, until: 0 };
+      this.floatPool.push(slot);
+    }
+    if (!slot) slot = this.floatPool.reduce((a, b) => (a.until < b.until ? a : b));
+    const { div, obj } = slot;
     div.className = `event-label ${e.bull ? 'bull' : 'bear'} ${e.kind}`;
     div.innerHTML = `<span>${e.kind === 'liq' ? t(`feed.${e.type}`) : t(e.bull ? 'ev.buy' : 'ev.sell')}</span><b>${fmtUsd(e.usd)}</b>`;
-    const obj = new CSS2DObject(div);
     obj.position.set(p.x, p.y + 3, p.z);
-    this.scene.add(obj);
-    setTimeout(() => {
-      this.scene.remove(obj);
-      div.remove();
-    }, 2600);
+    if (obj.parent !== this.scene) this.scene.add(obj);
+    else {
+      // restart the CSS animation on a reused node
+      div.style.animation = 'none';
+      void div.offsetWidth;
+      div.style.animation = '';
+    }
+    slot.until = this.time + 2.6;
   }
 
+  /** Fireworks over the winner's base and the front; the loser's flag changes hands. */
   celebrate(winner: Team) {
     const loser: Team = winner === 'bulls' ? 'bears' : 'bulls';
     this.bases.capture(loser, winner);
     this.audio?.fanfare(winner);
-    for (let i = 0; i < 12; i++) this.celebrations.push({ at: this.time + 0.3 + i * 0.38, team: winner });
+    const b = BASE_CENTER[winner];
+    for (let i = 0; i < 11; i++) {
+      const overFront = i % 3 === 2 && this.field;
+      const z = (Math.random() - 0.5) * (overFront ? FIELD_DEPTH * 0.6 : 20);
+      const x = overFront ? this.frontX(z) + (Math.random() - 0.5) * 10 : b.x + (Math.random() - 0.5) * 20;
+      const p = new THREE.Vector3(x, groundHeight(x, z) + 1, z);
+      const at = this.time + 0.3 + i * 0.36;
+      this.celebrations.push({ at, team: winner, kind: 'launch', p });
+      this.celebrations.push({ at: at + 0.95, team: winner, kind: 'pop', p: new THREE.Vector3(p.x, p.y + 16, p.z) });
+    }
+    this.celebrations.sort((u, v) => u.at - v.at);
   }
 
   /** Rifle fire along the front, scaled by taker flow: muzzle flash + tracer + recoil. */
@@ -317,8 +389,9 @@ export class World {
     u.uTime.value = this.time;
     u.uAmp.value += (this.amp - u.uAmp.value) * (1 - Math.exp(-dt));
     u.uFront.value = this.field ? this.field.x(this.visualPrice) : 0;
-    this.flash.k *= Math.exp(-dt * 2.2);
-    u.uFlash.value.copy(this.flash.color).multiplyScalar(this.flash.k * 2.5);
+    this.flash.k *= Math.exp(-dt * 3.5);
+    u.uFlash.value.copy(this.flash.color).multiplyScalar(this.flash.k * 1.2);
+    this.terrain.update(dt);
 
     if (this.field) {
       this.rifleFire(dt);
@@ -334,21 +407,18 @@ export class World {
 
     while (this.celebrations.length && this.celebrations[0].at <= this.time) {
       const c = this.celebrations.shift()!;
-      const loser = c.team === 'bulls' ? 'bears' : 'bulls';
-      const b = BASE_CENTER[loser];
-      const p = new THREE.Vector3(b.x + (Math.random() - 0.5) * 22, groundHeight(b.x, b.z) + 1 + Math.random() * 7, b.z + (Math.random() - 0.5) * 22);
-      const size = 1.4 + Math.random() * 1.6;
-      this.effects.explosion(p, size, this.teamGlow[c.team]);
-      this.shakeNear(p, size * 0.6);
-      if (this.audio) {
-        const e2 = this.ear(p);
-        this.audio.explosion(e2.x, e2.d, size);
-      }
-      // fireworks above the captured base
-      this.effects.flare(tmp.set(p.x, p.y + 2, p.z), this.teamGlow[c.team]);
+      const e2 = this.audio ? this.ear(c.p) : null;
+      if (c.kind === 'launch') {
+        this.effects.firework(c.p, this.teamGlow[c.team]);
+        if (e2) this.audio!.flare(e2.x, e2.d);
+      } else if (e2) this.audio!.explosion(e2.x, e2.d, 0.45);
     }
+    for (const slot of this.floatPool) if (slot.obj.parent && slot.until <= this.time) this.scene.remove(slot.obj);
 
     this.army.update(dt, this.time, this.frontFn);
+    // smoke lighting: sun direction in view space, sun and sky radiance of the preset
+    this.sunView.copy(this.lighting.sun.position).normalize().transformDirection(this.camera.matrixWorldInverse);
+    this.effects.setLight(this.sunView, this.lighting.sun.color, this.lighting.sun.intensity, this.lighting.hemi.color, this.lighting.hemi.intensity);
     this.effects.update(dt);
     this.bases.update(this.time, dt);
 
@@ -362,6 +432,10 @@ export class World {
       progress: this.round ? (this.frontPrice - this.round.bearsWinAt) / (this.round.bullsWinAt - this.round.bearsWinAt) : 0.5,
     });
 
+    if (this.renderer.shadowMap.enabled && ++this.shadowTick >= this.quality.shadowInterval) {
+      this.shadowTick = 0;
+      this.renderer.shadowMap.needsUpdate = true;
+    }
     if (this.post) this.post.render(dt);
     else this.renderer.render(this.scene, this.camera);
     this.labels.render(this.scene, this.camera);
@@ -376,12 +450,20 @@ export class World {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
     const panels = this.labelObstacles?.() ?? [];
-    for (const obj of Object.values(this.reserveLabels)) {
+    for (const team of ['bulls', 'bears'] as const) {
+      const obj = this.reserveLabels[team];
       const el = obj.element;
+      const size = this.reserveSize[team];
+      if (size.dirty && el.isConnected) {
+        // measured once per text change, after the CSS2D renderer has placed the node
+        size.w = el.offsetWidth;
+        size.h = el.offsetHeight;
+        size.dirty = false;
+      }
       const v = tmp2.copy(obj.position).project(this.camera);
       const x = (v.x * 0.5 + 0.5) * w;
       const y = (0.5 - v.y * 0.5) * h;
-      const [l, r, t, b] = [x - el.offsetWidth / 2, x + el.offsetWidth / 2, y - el.offsetHeight / 2, y + el.offsetHeight / 2];
+      const [l, r, t, b] = [x - size.w / 2, x + size.w / 2, y - size.h / 2, y + size.h / 2];
       const covered = panels.some((p) => l < p.right && r > p.left && t < p.bottom && b > p.top);
       el.classList.toggle('cut', v.z > 1 || l < 4 || r > w - 4 || t < 4 || b > h - 4 || covered);
     }

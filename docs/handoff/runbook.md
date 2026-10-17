@@ -30,7 +30,7 @@ pnpm dev              # http://localhost:5173
 | 指定主机和端口，后台运行 | `./node_modules/.bin/vite --port 5173 --strictPort --host 127.0.0.1` |
 | 生产预览 | `pnpm build && pnpm preview`（端口 4173） |
 | 离线演示 | `/?sim`，或 `/?sim&range=0.06`（几十秒就分出胜负） |
-| 低配设备 | `/?q=low`（关闭阴影和后期，像素比 1） |
+| 低配设备 | 默认会按帧率自动降档；`/?q=low` 固定最省模式（关闭阴影和后期，像素比 1），`/?q=3` 之类固定某一档 |
 | 只用部分交易所 | `/?sources=coinbase,kraken,okx` |
 | 指定语言或光照 | `/?lang=en&light=night` |
 

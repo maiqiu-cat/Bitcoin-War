@@ -1,14 +1,70 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-/** Tilt-shift (diorama look) + vignette + light grading, in linear HDR before tone mapping. */
+const DIR_X = new THREE.Vector2(1, 0);
+const DIR_Y = new THREE.Vector2(0, 1);
+
+/**
+ * The stock UnrealBloomPass minus its last step. The stock pass blends the bloom additively back
+ * into the (MSAA) scene target, which costs a full-resolution pass and a second MSAA resolve;
+ * here the composited bloom stays in its small target and the Finish pass adds it while grading.
+ * The chain starts at half the CSS size, i.e. a quarter of the drawing buffer at pixel ratio 2
+ * (indistinguishable from half the buffer: bloom is a blur).
+ */
+class BloomTexture extends UnrealBloomPass {
+  private quad = new FullScreenQuad();
+
+  /** Composited bloom (already multiplied by `strength`). */
+  get texture() {
+    return this.renderTargetsHorizontal[0].texture;
+  }
+
+  /** Fill `texture` from an HDR scene texture. */
+  update(renderer: THREE.WebGLRenderer, input: THREE.Texture) {
+    const hp = this.highPassUniforms as Record<string, THREE.IUniform>;
+    hp.tDiffuse.value = input;
+    hp.luminosityThreshold.value = this.threshold;
+    this.quad.material = this.materialHighPassFilter;
+    renderer.setRenderTarget(this.renderTargetBright);
+    this.quad.render(renderer);
+    let src = this.renderTargetBright;
+    for (let i = 0; i < this.nMips; i++) {
+      const m = this.separableBlurMaterials[i];
+      this.quad.material = m;
+      m.uniforms.colorTexture.value = src.texture;
+      m.uniforms.direction.value = DIR_X;
+      renderer.setRenderTarget(this.renderTargetsHorizontal[i]);
+      this.quad.render(renderer);
+      m.uniforms.colorTexture.value = this.renderTargetsHorizontal[i].texture;
+      m.uniforms.direction.value = DIR_Y;
+      renderer.setRenderTarget(this.renderTargetsVertical[i]);
+      this.quad.render(renderer);
+      src = this.renderTargetsVertical[i];
+    }
+    const c = this.compositeMaterial;
+    c.uniforms.bloomStrength.value = this.strength;
+    c.uniforms.bloomRadius.value = this.radius;
+    this.quad.material = c;
+    renderer.setRenderTarget(this.renderTargetsHorizontal[0]);
+    this.quad.render(renderer);
+  }
+
+  dispose() {
+    super.dispose();
+    this.quad.dispose();
+  }
+}
+
+/**
+ * Bloom composite + tilt-shift (diorama look) + vignette + light grading, in linear HDR, then
+ * tone mapping and sRGB output straight to the screen (the chunks below are defined by three for
+ * any non-raw ShaderMaterial that renders to the canvas).
+ */
 const FinishShader = {
   uniforms: {
-    tDiffuse: { value: null },
+    tDiffuse: { value: null as THREE.Texture | null },
+    tBloom: { value: null as THREE.Texture | null },
     uRes: { value: new THREE.Vector2(1, 1) },
     uBlur: { value: 3 },
     uFocus: { value: 0.5 },
@@ -22,6 +78,7 @@ const FinishShader = {
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
+    uniform sampler2D tBloom;
     uniform vec2 uRes;
     uniform float uBlur, uFocus, uBand, uVignette, uSat;
     uniform vec3 uWarm;
@@ -39,37 +96,90 @@ const FinishShader = {
         for (int i = 0; i < 12; i++) acc += texture2D(tDiffuse, vUv + P[i] * b / uRes).rgb;
         col.rgb = acc / 13.0;
       }
+      #ifdef BLOOM
+      col.rgb += texture2D(tBloom, vUv).rgb;
+      #endif
       float l = dot(col.rgb, vec3(0.2126, 0.7152, 0.0722));
       col.rgb = mix(vec3(l), col.rgb, uSat) * uWarm;
       vec2 q = vUv - 0.5;
       q.x *= uRes.x / uRes.y;
       col.rgb *= mix(1.0 - uVignette, 1.0, smoothstep(1.05, 0.3, length(q)));
-      gl_FragColor = col;
+      gl_FragColor = vec4(col.rgb, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
     }`,
 };
 
+/**
+ * HDR pipeline: scene → HalfFloat target (MSAA) → bloom chain (small targets) → one
+ * full-screen Finish pass that composites the bloom, applies the diorama blur, grade,
+ * vignette, tone mapping and sRGB, directly to the canvas.
+ *
+ * Two full-resolution passes and one MSAA resolve per frame; the stock composer chain
+ * (RenderPass → UnrealBloomPass → ShaderPass → OutputPass) needed four passes, three
+ * resolves and a second MSAA target that only ever received a full-screen quad.
+ */
 export class PostFX {
-  readonly composer: EffectComposer;
-  readonly bloom: UnrealBloomPass;
-  readonly finish: ShaderPass;
+  readonly bloom: BloomTexture;
+  private sceneRT: THREE.WebGLRenderTarget;
+  private readonly finish: THREE.ShaderMaterial;
+  private readonly quad: FullScreenQuad;
   private tilt = { cur: 3, target: 3 };
+  private size = new THREE.Vector2(1, 1);
+  private bloomOn = true;
+  /** Tilt-shift blur on; off makes the Finish pass a single texture fetch per pixel. */
+  tiltEnabled = true;
 
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
-    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-    const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
-    this.composer = new EffectComposer(renderer, rt);
-    this.composer.addPass(new RenderPass(scene, camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.65, 0.55, 1.15);
-    this.composer.addPass(this.bloom);
-    this.finish = new ShaderPass(FinishShader);
-    this.composer.addPass(this.finish);
-    this.composer.addPass(new OutputPass());
+  constructor(
+    private readonly renderer: THREE.WebGLRenderer,
+    private readonly scene: THREE.Scene,
+    private readonly camera: THREE.Camera,
+    samples: 0 | 2 | 4 = 4,
+  ) {
+    renderer.getDrawingBufferSize(this.size);
+    this.sceneRT = PostFX.makeTarget(this.size.x, this.size.y, samples);
+    const css = new THREE.Vector2(this.size.x, this.size.y).divideScalar(renderer.getPixelRatio());
+    this.bloom = new BloomTexture(css, 0.65, 0.3, 1.15);
+    this.finish = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.clone(FinishShader.uniforms),
+      vertexShader: FinishShader.vertexShader,
+      fragmentShader: FinishShader.fragmentShader,
+      defines: { BLOOM: '' },
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.finish.uniforms.uRes.value.copy(this.size);
+    this.quad = new FullScreenQuad(this.finish);
+  }
+
+  private static makeTarget(w: number, h: number, samples: number) {
+    return new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples, depthBuffer: true, stencilBuffer: false });
+  }
+
+  get samples() {
+    return this.sceneRT.samples;
+  }
+
+  /** MSAA of the scene target (0, 2 or 4); recreates the target. */
+  setSamples(n: 0 | 2 | 4) {
+    if (n === this.sceneRT.samples) return;
+    this.sceneRT.dispose();
+    this.sceneRT = PostFX.makeTarget(this.size.x, this.size.y, n);
+  }
+
+  setBloom(on: boolean) {
+    if (on === this.bloomOn) return;
+    this.bloomOn = on;
+    if (on) this.finish.defines.BLOOM = '';
+    else delete this.finish.defines.BLOOM;
+    this.finish.needsUpdate = true;
   }
 
   setSize(w: number, h: number, pixelRatio: number) {
-    this.composer.setPixelRatio(pixelRatio);
-    this.composer.setSize(w, h);
-    this.finish.uniforms.uRes.value.set(w * pixelRatio, h * pixelRatio);
+    this.size.set(Math.floor(w * pixelRatio), Math.floor(h * pixelRatio));
+    this.sceneRT.setSize(this.size.x, this.size.y);
+    this.bloom.setSize(w, h);
+    this.finish.uniforms.uRes.value.copy(this.size);
   }
 
   /** Stronger miniature blur in cinematic mode, subtle when the user drives the camera. */
@@ -86,7 +196,14 @@ export class PostFX {
 
   render(dt: number) {
     this.tilt.cur += (this.tilt.target - this.tilt.cur) * (1 - Math.exp(-dt * 2));
-    this.finish.uniforms.uBlur.value = this.tilt.cur * this.finish.uniforms.uRes.value.y / 1000;
-    this.composer.render(dt);
+    this.finish.uniforms.uBlur.value = this.tiltEnabled ? (this.tilt.cur * this.size.y) / 1000 : 0;
+    const r = this.renderer;
+    r.setRenderTarget(this.sceneRT);
+    r.render(this.scene, this.camera);
+    if (this.bloomOn) this.bloom.update(r, this.sceneRT.texture);
+    this.finish.uniforms.tDiffuse.value = this.sceneRT.texture;
+    this.finish.uniforms.tBloom.value = this.bloom.texture;
+    r.setRenderTarget(null);
+    this.quad.render(r);
   }
 }

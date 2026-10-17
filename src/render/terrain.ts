@@ -21,8 +21,12 @@ export function groundHeight(x: number, z: number) {
   const roadD = Math.abs(z - ROAD_Z);
   h *= THREE.MathUtils.smoothstep(roadD, 2.5, 7);
   for (const l of LAKES) {
-    const d = Math.hypot(x - l.x, z - l.z);
-    if (d < l.r + 4) h = THREE.MathUtils.lerp(-0.6, h, THREE.MathUtils.smoothstep(d, l.r - 1, l.r + 4));
+    const dx = x - l.x;
+    const dz = z - l.z;
+    const reach = l.r + 4;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= reach * reach) continue; // hot path: called per unit per frame
+    h = THREE.MathUtils.lerp(-0.6, h, THREE.MathUtils.smoothstep(Math.sqrt(d2), l.r - 1, reach));
   }
   // fade to flat at the board edges
   const ex = BOARD_W / 2 - Math.abs(x);
@@ -49,6 +53,7 @@ export class Terrain {
   readonly group = new THREE.Group();
   readonly uniforms: TerrainUniforms;
   private ticks = new THREE.Group();
+  private waterNormal: THREE.Texture | null = null;
 
   constructor() {
     this.uniforms = {
@@ -114,11 +119,11 @@ diffuseColor.rgb *= bbCol;`,
         .replace(
           '#include <emissivemap_fragment>',
           `#include <emissivemap_fragment>
-float bbLine = smoothstep(0.45, 0.0, abs(bbD));
+float bbLine = smoothstep(0.22, 0.0, abs(bbD));
 float bbPulse = pow(0.5 + 0.5 * sin(vBBWorld.z * 0.22 - uTime * 2.6), 10.0) + pow(0.5 + 0.5 * sin(-vBBWorld.z * 0.13 - uTime * 1.7 + 2.0), 14.0);
 vec3 bbSide = bbD < 0.0 ? vec3(0.25, 0.9, 0.45) : vec3(1.0, 0.3, 0.25);
-totalEmissiveRadiance += (uLine * (0.75 + bbPulse * 1.1) + uFlash) * bbLine * uLineGlow
-  + (bbSide * 0.09 * uLineGlow + uFlash * 0.18) * exp(-abs(bbD) * 0.9);`,
+totalEmissiveRadiance += (uLine * (0.38 + bbPulse * 1.5) + uFlash * 0.5) * bbLine * uLineGlow
+  + (bbSide * 0.035 * uLineGlow + uFlash * 0.05) * exp(-abs(bbD) * 1.6);`,
         );
     };
     const mesh = new THREE.Mesh(geo, mat);
@@ -199,19 +204,38 @@ totalEmissiveRadiance += (uLine * (0.75 + bbPulse * 1.1) + uFlash) * bbLine * uL
 
   private buildLakes() {
     const g = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: '#3f7fa6', roughness: 0.12, metalness: 0.2, transparent: true, opacity: 0.9 });
-    const shore = new THREE.MeshStandardMaterial({ color: '#c9b98a', roughness: 1 });
+    this.waterNormal = rippleNormalMap();
+    const mat = new THREE.MeshStandardMaterial({
+      color: '#3f7fa6',
+      roughness: 0.12,
+      metalness: 0.2,
+      transparent: true,
+      opacity: 0.9,
+      normalMap: this.waterNormal,
+      normalScale: new THREE.Vector2(0.18, 0.18),
+    });
+    // Sand fades into the grass instead of a hard coin edge.
+    const shore = new THREE.MeshStandardMaterial({ color: '#c9b98a', roughness: 1, transparent: true, alphaMap: shoreAlpha(), depthWrite: false });
     for (const l of LAKES) {
-      const s = new THREE.Mesh(new THREE.CircleGeometry(l.r + 1.2, 40), shore);
+      const s = new THREE.Mesh(new THREE.CircleGeometry(l.r + 2.4, 40), shore);
       s.rotation.x = -Math.PI / 2;
       s.position.set(l.x, -0.42, l.z);
       s.receiveShadow = true;
+      s.renderOrder = -1;
       const w = new THREE.Mesh(new THREE.CircleGeometry(l.r, 40), mat);
       w.rotation.x = -Math.PI / 2;
       w.position.set(l.x, -0.32, l.z);
+      w.receiveShadow = true;
       g.add(s, w);
     }
     return g;
+  }
+
+  /** Slow drift of the water ripples. */
+  update(dt: number) {
+    if (!this.waterNormal) return;
+    this.waterNormal.offset.x += dt * 0.012;
+    this.waterNormal.offset.y += dt * 0.007;
   }
 
   private buildTrees() {
@@ -290,17 +314,14 @@ transformed.z += bbSway * 0.5;`,
     const minor = step / 5;
     const zEdge = field.depth / 2 + 4;
     const dashMat = new THREE.MeshBasicMaterial({ color: '#f4f1e6', transparent: true, opacity: 0.85 });
-    const majorGeo = new THREE.BoxGeometry(0.3, 0.06, 2.6);
-    const minorGeo = new THREE.BoxGeometry(0.18, 0.05, 1.1);
     const start = Math.ceil(field.minPrice / minor) * minor;
+    const dashes: { x: number; z: number; major: boolean }[] = [];
     for (let p = start; p <= field.maxPrice; p += minor) {
       const major = Math.abs(p / step - Math.round(p / step)) < 1e-6;
       const x = field.x(p);
       for (const side of [-1, 1]) {
         const z = side * zEdge;
-        const d = new THREE.Mesh(major ? majorGeo : minorGeo, dashMat);
-        d.position.set(x, groundHeight(x, z) + 0.06, z);
-        this.ticks.add(d);
+        dashes.push({ x, z, major });
         if (major) {
           const label = textPlane(Math.round(p).toLocaleString('en-US'), 7, 1.6);
           label.position.set(x, groundHeight(x, z + side * 3.6) + 0.08, z + side * 3.6);
@@ -308,6 +329,19 @@ transformed.z += bbSway * 0.5;`,
         }
       }
     }
+    // All dashes in one draw call (a unit box scaled per instance).
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), dashMat, dashes.length);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const pos = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    dashes.forEach((d, i) => {
+      pos.set(d.x, groundHeight(d.x, d.z) + 0.06, d.z);
+      scale.set(d.major ? 0.3 : 0.18, d.major ? 0.06 : 0.05, d.major ? 2.6 : 1.1);
+      mesh.setMatrixAt(i, m.compose(pos, q, scale));
+    });
+    mesh.frustumCulled = false;
+    this.ticks.add(mesh);
   }
 }
 
@@ -348,4 +382,47 @@ export function mergeSimple(geos: THREE.BufferGeometry[]) {
     out.setAttribute(name, new THREE.BufferAttribute(arr, 3));
   }
   return out;
+}
+
+/** Radial alpha for the sand ring: solid near the water, gone at the rim. */
+function shoreAlpha() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, '#fff');
+  grad.addColorStop(0.72, '#fff');
+  grad.addColorStop(1, '#000');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+/** Small tiling normal map of gentle ripples, scrolled by `Terrain.update`. */
+function rippleNormalMap(size = 64) {
+  const data = new Uint8Array(size * size * 4);
+  const h = (x: number, y: number) => {
+    const u = (x / size) * Math.PI * 2;
+    const v = (y / size) * Math.PI * 2;
+    return Math.sin(u * 2 + v) * 0.5 + Math.sin(v * 3 - u * 2 + 1.3) * 0.3 + Math.sin(u * 5 + v * 4) * 0.2;
+  };
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const dx = (h(x + 1, y) - h(x - 1, y)) * 0.5;
+      const dy = (h(x, y + 1) - h(x, y - 1)) * 0.5;
+      const n = new THREE.Vector3(-dx, -dy, 1).normalize();
+      const o = (y * size + x) * 4;
+      data[o] = Math.round((n.x * 0.5 + 0.5) * 255);
+      data[o + 1] = Math.round((n.y * 0.5 + 0.5) * 255);
+      data[o + 2] = Math.round((n.z * 0.5 + 0.5) * 255);
+      data[o + 3] = 255;
+    }
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(6, 6);
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
 }

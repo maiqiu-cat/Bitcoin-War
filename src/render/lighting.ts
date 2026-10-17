@@ -82,8 +82,8 @@ export const PRESETS: Record<LightingName, Preset> = {
     fog: '#121a2a',
     exposure: 1.35,
     lineGlow: 0.9,
-    bloom: 0.75,
-    bloomThreshold: 1.0,
+    bloom: 0.65,
+    bloomThreshold: 1.3,
     warm: [0.92, 0.98, 1.1],
     vignette: 0.42,
     smoke: '#3c4250',
@@ -105,10 +105,10 @@ export class Lighting {
   current: LightingName = 'golden';
   private skyMat: THREE.ShaderMaterial;
 
-  constructor(private readonly scene: THREE.Scene, private readonly renderer: THREE.WebGLRenderer, shadows: boolean) {
+  constructor(private readonly scene: THREE.Scene, private readonly renderer: THREE.WebGLRenderer, shadowSize: number) {
     this.sun = new THREE.DirectionalLight('#ffffff', 3);
-    this.sun.castShadow = shadows;
-    this.sun.shadow.mapSize.set(4096, 4096);
+    this.sun.castShadow = shadowSize > 0;
+    this.sun.shadow.mapSize.set(shadowSize || 1024, shadowSize || 1024);
     const s = this.sun.shadow.camera;
     s.left = -150;
     s.right = 150;
@@ -132,11 +132,33 @@ export class Lighting {
         bottom: { value: new THREE.Color() },
       },
       vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      // Below the horizon the backdrop dims towards the bottom colour (seen when the camera dips at
+      // the board's edge). The two includes are no-ops inside the HDR target and apply tone mapping
+      // + sRGB when the sky is drawn straight to the canvas (post-processing off), see ADR 0009.
       fragmentShader: `uniform vec3 top, horizon, bottom; varying vec3 vP;
-        void main(){ float h = vP.y; vec3 c = h > 0.0 ? mix(horizon, top, pow(h, 0.55)) : mix(horizon, bottom, pow(-h, 0.35)); gl_FragColor = vec4(c, 1.0); }`,
+        void main(){
+          float h = vP.y;
+          vec3 c = h > 0.0 ? mix(horizon, top, pow(h, 0.55)) : mix(horizon, bottom, pow(-h, 0.35)) * mix(1.0, 0.55, smoothstep(0.08, 0.6, -h));
+          gl_FragColor = vec4(c, 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`,
     });
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(1500, 32, 16), this.skyMat);
     scene.add(this.sky);
+  }
+
+  /** Sun shadow map edge in texels; 0 turns shadows off. Changing the size recreates the map. */
+  setShadows(size: number) {
+    const on = size > 0;
+    this.renderer.shadowMap.enabled = on;
+    this.sun.castShadow = on;
+    if (on && this.sun.shadow.mapSize.x !== size) {
+      this.sun.shadow.mapSize.set(size, size);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+    }
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   apply(name: LightingName) {
@@ -153,6 +175,7 @@ export class Lighting {
     this.skyMat.uniforms.bottom.value.set(p.skyBottom);
     this.scene.fog = new THREE.Fog(p.fog, 260, 900);
     this.renderer.toneMappingExposure = p.exposure;
+    this.renderer.shadowMap.needsUpdate = true;
     return p;
   }
 }
